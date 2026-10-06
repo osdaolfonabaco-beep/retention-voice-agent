@@ -30,6 +30,8 @@ PACING = {
     "*": {"interval": 13, "max_calls": 20},
 }
 MAX_ATTEMPTS = 2
+TRANSIENT_WAIT = 30   # seconds to wait before the retry that follows a TransientError
+TRANSIENT_LIMIT = 3   # consecutive cards failed by TransientError before a model is dropped
 
 RULE_ID = re.compile(r"\b(VR|FL|OF|PP|PR|ES|CL|TN)-\d+\b")
 SPEAKERS = {"agent", "customer"}
@@ -88,6 +90,11 @@ def validate_turns(data: dict, card: dict) -> list[dict]:
         if RULE_ID.search(text):
             raise InvalidOutput(f"turn {i}: cites a rule ID")
         clean.append({"speaker": speaker, "text": text})
+    if clean[0]["speaker"] != "agent":
+        raise InvalidOutput("first turn is not the agent")
+    for i in range(1, len(clean)):
+        if clean[i]["speaker"] == clean[i - 1]["speaker"]:
+            raise InvalidOutput(f"turns {i} and {i + 1} have the same speaker")
     return clean
 
 
@@ -120,6 +127,7 @@ class Pacer:
         self.calls: Counter = Counter()
         self.last: dict[str, float] = {}
         self.stopped: dict[str, str] = {}
+        self.transient_streak: Counter = Counter()
 
     def exhausted(self, key: str) -> bool:
         return self.calls[key] >= limits_for(key)["max_calls"]
@@ -174,10 +182,14 @@ def run_cards(pending, client, system_prompt, out_path, log_path, pacer,
         for n, card in enumerate(pending, start=1):
             key = norm_model(card["model"])
             status = "failed"
+            last_transient = False
             for attempt in range(1, MAX_ATTEMPTS + 1):
                 if not pacer.available(key):
                     status = "skipped"
                     break
+                if last_transient:
+                    pacer.sleep(TRANSIENT_WAIT)
+                last_transient = False
                 pacer.before_call(key)
                 try:
                     text = client.complete(card["model"], build_messages(system_prompt, card))
@@ -186,12 +198,14 @@ def run_cards(pending, client, system_prompt, out_path, log_path, pacer,
                     log(card, attempt, "error", str(exc))
                     break
                 except TransientError as exc:
+                    last_transient = True
                     log(card, attempt, "error", str(exc))
                     continue
                 except LLMError as exc:
                     pacer.stopped[key] = "provider error"
                     log(card, attempt, "error", str(exc))
                     break
+                pacer.transient_streak[key] = 0
                 try:
                     turns = validate_turns(parse_output(text), card)
                 except InvalidOutput as exc:
@@ -204,6 +218,10 @@ def run_cards(pending, client, system_prompt, out_path, log_path, pacer,
                 log(card, attempt, "ok")
                 status = "ok"
                 break
+            if status == "failed" and last_transient:
+                pacer.transient_streak[key] += 1
+                if pacer.transient_streak[key] >= TRANSIENT_LIMIT:
+                    pacer.stopped[key] = "unavailable"
             totals[status] += 1
             if status == "skipped":
                 skipped_by_model[key] += 1

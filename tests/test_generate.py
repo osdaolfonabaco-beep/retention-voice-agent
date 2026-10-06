@@ -113,6 +113,18 @@ def test_validation_rejects(data):
         validate_turns(data, make_card("a"))
 
 
+@pytest.mark.parametrize("speakers, reason", [
+    (["customer", "agent"], "first turn is not the agent"),
+    (["agent", "customer", "customer"], "turns 2 and 3 have the same speaker"),
+    (["agent", "agent", "customer"], "turns 1 and 2 have the same speaker"),
+])
+def test_validation_requires_agent_first_and_alternation(speakers, reason):
+    data = {"turns": [{"speaker": s, "text": "t"} for s in speakers]}
+    with pytest.raises(InvalidOutput) as exc:
+        validate_turns(data, make_card("a"))
+    assert str(exc.value) == reason
+
+
 def test_rule_id_regex_needs_word_boundary():
     data = {"turns": [{"speaker": "agent", "text": "PR-1x is fine? no: SPR-1"},
                       {"speaker": "customer", "text": "ok"}]}
@@ -156,6 +168,44 @@ def test_retry_succeeds_after_invalid_or_transient(env):
     seq2 = {1: TransientError("APITimeoutError"), 2: good()}
     env.run([make_card("b")], FakeClient(lambda m, n: seq2[n]))
     assert [r["status"] for r in env.log_rows()][-2:] == ["error", "ok"]
+
+
+def test_transient_retry_waits_30s_but_invalid_retry_does_not(env):
+    seq = {1: TransientError("APITimeoutError"), 2: good()}
+    env.run([make_card("a")], FakeClient(lambda m, n: seq[n]))
+    assert env.time.sleeps == [generate.TRANSIENT_WAIT] == [30]
+    seq2 = {1: "garbage", 2: good()}
+    env.run([make_card("b")], FakeClient(lambda m, n: seq2[n]))
+    assert env.time.sleeps == [5]  # normal pacing only
+
+
+def test_no_wait_after_last_transient_attempt(env):
+    env.run([make_card("a")], FakeClient(lambda m, n: TransientError("APITimeoutError")))
+    assert env.time.sleeps == [30]  # one wait between the two attempts only
+
+
+def test_three_transient_failures_in_a_row_stop_the_model(env, capsys):
+    def handler(model, n):
+        return TransientError("APIStatusError", 503) if model == FLASH else good()
+
+    cards = [make_card(f"f{i}", FLASH) for i in range(4)] + [make_card("l", LITE)]
+    env.run(cards, FakeClient(handler))
+    assert env.client.calls.count(FLASH) == 6
+    assert [r["id"] for r in env.out_rows()] == ["l"]
+    out = capsys.readouterr().out
+    assert "[4/5] f3 skipped" in out
+    assert "skipped 1 for gemini-3.8-flash: unavailable" in out
+
+
+def test_successful_call_resets_transient_count(env, capsys):
+    def handler(model, n):
+        # cards f0,f1 fail (calls 1-4), f2 succeeds (call 5), f3,f4 fail (calls 6-9)
+        return good() if n == 5 else TransientError("APITimeoutError")
+
+    env.run([make_card(f"f{i}", FLASH) for i in range(5)], FakeClient(handler))
+    out = capsys.readouterr().out
+    assert "unavailable" not in out and "skipped: 0" in out and "failed: 4" in out
+    assert [r["id"] for r in env.out_rows()] == ["f2"]
 
 
 def test_rate_limit_stops_that_model_only(env, capsys):
