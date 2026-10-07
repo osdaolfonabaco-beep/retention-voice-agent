@@ -21,7 +21,7 @@ from retention.audit import (RATE_LIMIT_RETRIES, RATE_LIMIT_WAIT, RUN_NAME,
                              write_run_meta)
 from retention.generate import read_done_ids
 from retention.llm import ChatClient, LLMError, RateLimited, TransientError
-from retention.tools import TOOL_SPECS, AccountSession
+from retention.tools import TOOL_SPECS, TOOLS_VERSION, AccountSession
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SCENARIOS = Path("data") / "agent" / "scenarios.jsonl"
@@ -352,7 +352,8 @@ def run_mode(args, client, models: tuple[str, str], root: Path, sleep, now, say=
             "agent_prompt_sha256": _sha256(agent_template),
             "customer_prompt_sha256": _sha256(customer_template),
             "policy_sha256": _sha256(policy), "scenarios_sha256": scenarios_sha,
-            "agent_reasoning_effort": AGENT_REASONING_EFFORT, "created": now()}
+            "agent_reasoning_effort": AGENT_REASONING_EFFORT, "tools_version": TOOLS_VERSION,
+            "created": now()}
     meta_exists = check_run_meta(out_dir / "run.json", meta)
 
     done = read_done_ids(out_dir / "conversations.jsonl")

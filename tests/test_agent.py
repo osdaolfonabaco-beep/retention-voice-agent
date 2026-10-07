@@ -8,7 +8,7 @@ import pytest
 
 from retention import agent, config
 from retention.llm import LLMError, RateLimited, TransientError
-from retention.tools import TOOL_SPECS, AccountSession
+from retention.tools import TOOL_SPECS, TOOLS_VERSION, AccountSession
 
 NOW = "2026-01-01T00:00:00+00:00"
 USAGE = {"input_tokens": 100, "output_tokens": 10}
@@ -426,7 +426,9 @@ def test_run_json_has_models_and_hashes(tmp_path):
     meta = json.loads((run.out_dir / "run.json").read_text(encoding="utf-8"))
     assert set(meta) == {"run", "agent_model", "customer_model", "agent_prompt",
                          "agent_prompt_sha256", "customer_prompt_sha256", "policy_sha256",
-                         "scenarios_sha256", "agent_reasoning_effort", "guards", "created"}
+                         "scenarios_sha256", "agent_reasoning_effort", "guards", "tools_version",
+                         "created"}
+    assert meta["tools_version"] == TOOLS_VERSION == 2
     assert meta["guards"] is True and meta["agent_prompt"] == "prompts/agent_system.md"
     assert meta["agent_reasoning_effort"] == "none"
     assert meta["run"] == "r1" and meta["agent_model"] == "agent-m"
@@ -868,3 +870,28 @@ def test_agent_settings_name_what_is_missing_and_never_a_value(tmp_path):
 def test_agent_settings_missing_file(tmp_path):
     with pytest.raises(config.ConfigError, match="not found"):
         config.load_agent_settings(tmp_path / "nope.env")
+
+
+def test_a_run_json_from_before_the_tools_version_is_refused(tmp_path):
+    run = Run(tmp_path, ids=("ag-01",))
+    run.go(quick())
+    path = run.out_dir / "run.json"
+    meta = json.loads(path.read_text(encoding="utf-8"))
+    del meta["tools_version"]
+    path.write_text(json.dumps(meta), encoding="utf-8")
+    third = quick()
+    with pytest.raises(SystemExit) as err:
+        run.go(third)
+    assert str(err.value) == MISMATCH and third.agent_calls == []
+
+
+def test_run_json_mismatch_covers_the_tools_version(tmp_path):
+    run = Run(tmp_path, ids=("ag-01",))
+    run.go(quick())
+    path = run.out_dir / "run.json"
+    meta = json.loads(path.read_text(encoding="utf-8"))
+    meta["tools_version"] = 1
+    path.write_text(json.dumps(meta), encoding="utf-8")
+    with pytest.raises(SystemExit) as err:
+        run.go(quick())
+    assert str(err.value) == MISMATCH

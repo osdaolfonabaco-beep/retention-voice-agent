@@ -141,7 +141,8 @@ def test_offer_requires_verification_and_yes():
     s = AccountSession(make_account(), "sc-1", grounding=False)
     assert offer(s) == {"applied": False, "reason": "not_verified"}
     s = verified()
-    assert offer(s, yes=False) == {"applied": False, "reason": "customer_has_not_said_yes"}
+    result = offer(s, yes=False)
+    assert result["reason"] == "customer_has_not_said_yes" and result["offer_available"] is True
     assert s.applied_offers == set()
 
 
@@ -261,11 +262,11 @@ def test_payment_plan_gates():
     assert plan(s, [{"date": "2026-10-06", "amount": 120}]) == {"set": False, "reason": "not_verified"}
     s = early()
     assert plan(s, [{"date": "2026-10-06", "amount": 120}], yes=False) == {
-        "set": False, "reason": "customer_has_not_said_yes"}
+        "set": False, "reason": "customer_has_not_said_yes", "plan_fits": True}
     for stage in ("Current", "Recovery"):
         s = verified(stage=stage, past_due_balance=120)
         assert plan(s, [{"date": "2026-10-06", "amount": 120}]) == {
-            "set": False, "reason": "stage_not_eligible"}
+            "set": False, "reason": "stage_not_eligible", "plan_fits": False}
 
 
 @pytest.mark.parametrize("stage, first_ok, first_late, last_ok, last_late", [
@@ -279,23 +280,25 @@ def test_payment_plan_limits_by_stage(stage, first_ok, first_late, last_ok, last
         return plan(s, [{"date": first, "amount": 50}, {"date": last, "amount": 50}])
 
     assert attempt(first_ok, last_ok)["set"] is True
-    assert attempt(first_late, last_ok) == {"set": False, "reason": "first_payment_too_late"}
+    assert attempt(first_late, last_ok) == {
+        "set": False, "reason": "first_payment_too_late", "plan_fits": False}
     if stage == "Late":  # the first date is already near the limit; test the last date alone
         s = verified(stage=stage, past_due_balance=100)
         assert plan(s, [{"date": "2026-10-06", "amount": 50}, {"date": last_late, "amount": 50}]) == {
-            "set": False, "reason": "plan_too_long"}
+            "set": False, "reason": "plan_too_long", "plan_fits": False}
     else:
-        assert attempt(first_ok, last_late) == {"set": False, "reason": "plan_too_long"}
+        assert attempt(first_ok, last_late) == {
+            "set": False, "reason": "plan_too_long", "plan_fits": False}
 
 
 def test_payment_plan_amount_and_date_rules():
     s = early()
     assert plan(s, [{"date": "2026-10-04", "amount": 120}]) == {
-        "set": False, "reason": "date_before_today"}
+        "set": False, "reason": "date_before_today", "plan_fits": False}
     assert plan(s, [{"date": "2026-10-06", "amount": 100}]) == {
-        "set": False, "reason": "total_must_equal_past_due_balance"}
+        "set": False, "reason": "total_must_equal_past_due_balance", "plan_fits": False}
     assert plan(s, [{"date": "2026-10-06", "amount": 130}, {"date": "2026-10-08", "amount": -10}]) == {
-        "set": False, "reason": "amounts_must_be_positive"}
+        "set": False, "reason": "amounts_must_be_positive", "plan_fits": False}
     assert plan(s, [{"date": "2026-10-05", "amount": 120}])["set"] is True  # today is allowed
 
 
@@ -514,9 +517,9 @@ def test_ungrounded_address_uses_the_part_before_the_first_comma():
 @pytest.mark.parametrize("said,amount,ok", [
     ("It was $60", 60, True), ("it was 60.00", 60, True), ("about 1,200 dollars", 1200, True),
     ("it was 60.00", 60.004, True), ("it was 60.00", 60.5, False),
-    ("sixty dollars", 60, False), ("it was $600", 60, False), ("", 60, False),
+    ("it was $600", 60, False), ("", 60, False),
 ])
-def test_ungrounded_amounts_must_be_numbers_written_with_digits(said, amount, ok):
+def test_ungrounded_amounts_written_with_digits(said, amount, ok):
     args = {"account_holder_full_name": "Teresa Galloway", "service_address": ADDRESS,
             "amount": amount}
     heard = ["Teresa Galloway 412 Juniper Ct " + said]
@@ -631,3 +634,167 @@ def test_log_blocked_records_the_call_without_running_it():
         {"after_turn": 3, "name": "get_account", "arguments": "not json",
          "result": {"blocked": "asked_a_question"}}]
     assert not s.ended
+
+
+# ---------------------------------------------------------------- numbers in words
+
+def _pay(amount):
+    return {"account_holder_full_name": "Teresa Galloway", "service_address": ADDRESS,
+            "amount": amount}
+
+
+@pytest.mark.parametrize("said, value", [
+    ("sixty", 60), ("I can pay sixty dollars", 60), ("forty-five", 45), ("forty five", 45),
+    ("twelve", 12), ("nineteen bucks", 19), ("zero", 0), ("five", 5),
+    ("one hundred and ten", 110), ("one hundred ten", 110), ("a hundred", 100),
+    ("two hundred", 200), ("nine hundred ninety nine", 999),
+    ("a thousand", 1000), ("two thousand five hundred", 2500),
+    ("one thousand and twelve", 1012), ("nine thousand nine hundred and ninety-nine", 9999),
+    ("SIXTY Dollars", 60),
+])
+def test_ungrounded_accepts_amounts_written_in_words(said, value):
+    assert tools.ungrounded("take_payment", _pay(value), ["Teresa Galloway 412 Juniper Ct " + said]) == []
+
+
+@pytest.mark.parametrize("said, value", [
+    ("sixty dollars", 61), ("sixty dollars", 600), ("sixty dollars", 6), ("forty five", 40),
+    ("ten thousand", 10000), ("hundred", 100), ("sixty sixty", 120), ("sixteen", 60),
+    ("something else", 60),
+])
+def test_ungrounded_rejects_amounts_the_words_do_not_make(said, value):
+    assert tools.ungrounded("take_payment", _pay(value), ["Teresa Galloway 412 Juniper Ct " + said]) == ["amount"]
+
+
+def test_word_numbers_lists_each_number_in_order():
+    assert tools._word_numbers("sixty, then forty-five and later one hundred and ten") == [
+        60.0, 45.0, 110.0]
+    assert tools._word_numbers("twenty twenty") == [20.0, 20.0]
+
+
+def test_amounts_in_words_work_across_turns_and_with_digits_unchanged():
+    said = ["Teresa Galloway at 412 Juniper Ct", "about sixty", "or maybe $45.50"]
+    assert tools.ungrounded("take_payment", _pay(60), said) == []
+    assert tools.ungrounded("take_payment", _pay(45.5), said) == []
+    assert tools.ungrounded("take_payment", _pay(45), said) == ["amount"]
+
+
+@pytest.mark.parametrize("said, pin, ok", [
+    ("four four one zero", "4410", True), ("Four-Four-One-Zero", "4410", True),
+    ("four four one oh", "4410", True), ("4 4 one 0", "4410", True),
+    ("it is four, four, one, zero", "4410", True), ("my pin is 4410", "4410", True),
+    ("four four one", "4410", False), ("four four ten", "4410", False),
+    ("forty four ten", "4410", False), ("four four one two", "4410", False),
+    ("four apples four one zero", "4410", False),
+])
+def test_ungrounded_pin_may_be_said_digit_by_digit(said, pin, ok):
+    args = {"full_name": "Teresa Galloway", "service_address": ADDRESS, "pin": pin}
+    heard = ["Teresa Galloway 412 Juniper Ct " + said]
+    assert (tools.ungrounded("verify_identity", args, heard) == []) is ok
+
+
+def test_digit_words_do_not_ground_names_or_addresses():
+    args = {"full_name": "Teresa Galloway", "service_address": "4 Juniper Ct, X"}
+    assert tools.ungrounded("verify_identity", args, ["Teresa Galloway, four Juniper Ct"]) == [
+        "service_address"]
+    args = {"full_name": "Tom 4", "service_address": "9 Elm St"}
+    assert tools.ungrounded("verify_identity", args, ["Tom four, 9 Elm St"]) == ["full_name"]
+
+
+def test_session_grounds_a_pin_said_in_words():
+    s = AccountSession(make_account(), "sc-1", grounding=True)
+    s.hear("I'm Teresa Galloway at 412 Juniper Ct, pin four four one zero")
+    result = call(s, "verify_identity", full_name="Teresa Galloway",
+                  service_address=ADDRESS, pin="4410")
+    assert result["result"] == "verified_account_holder"
+
+
+# ---------------------------------------------------------------- tools answer before the yes
+
+def test_tools_version_and_descriptions_tell_the_model_it_can_check_first():
+    assert tools.TOOLS_VERSION == 2
+    descriptions = {t["function"]["name"]: t["function"]["description"] for t in tools.TOOL_SPECS}
+    for name in ("apply_offer", "set_payment_plan"):
+        assert "customer_said_yes false" in descriptions[name]
+    assert "false" not in descriptions["cancel_service"]
+
+
+def test_plan_that_fits_without_a_yes_is_not_set():
+    s = early()
+    first = plan(s, [{"date": "2026-10-06", "amount": 120}], yes=False)
+    assert first == {"set": False, "reason": "customer_has_not_said_yes", "plan_fits": True}
+    assert plan(s, [{"date": "2026-10-06", "amount": 120}])["set"] is True   # nothing was set before
+
+
+def test_plan_that_breaks_a_limit_reports_its_reason_with_or_without_a_yes():
+    for yes in (True, False):
+        s = early()
+        assert plan(s, [{"date": "2026-10-06", "amount": 100}], yes=yes) == {
+            "set": False, "reason": "total_must_equal_past_due_balance", "plan_fits": False}
+        assert plan(s, [{"date": "2027-06-01", "amount": 120}], yes=yes)["reason"] == (
+            "first_payment_too_late")
+
+
+def test_plan_still_needs_verification_first():
+    s = AccountSession(make_account(stage="Early", past_due_balance=120), "sc-1", grounding=False)
+    assert plan(s, [{"date": "2027-06-01", "amount": 1}], yes=False) == {
+        "set": False, "reason": "not_verified"}
+
+
+def test_plan_malformed_dates_are_errors_even_without_a_yes():
+    assert plan(early(), [{"date": "10/06/2026", "amount": 120}], yes=False) == {
+        "error": "invalid argument: date"}
+
+
+def test_available_offer_without_a_yes_returns_a_preview_and_changes_nothing():
+    s = verified()
+    preview = offer(s, yes=False)
+    assert preview["applied"] is False and preview["offer_available"] is True
+    assert preview["reason"] == "customer_has_not_said_yes"
+    applied = offer(s)
+    assert applied["applied"] is True and preview["preview"] == applied["details"]
+    assert s.applied_offers == {"discount_25_3mo"}
+
+
+@pytest.mark.parametrize("name, extra, over", [
+    ("downgrade", {"target_plan": "Basic"}, {}),
+    ("service_credit", {"amount": 10}, {"confirmed_service_issue": "outage"}),
+    ("extra_days", {"days": 5}, {"confirmed_service_issue": "outage"}),
+])
+def test_every_offer_previews_what_it_would_apply(name, extra, over):
+    s = verified(**over)
+    preview = offer(s, name, yes=False, **extra)
+    assert preview["offer_available"] is True
+    assert s.applied_offers == set()
+    assert preview["preview"] == offer(s, name, **extra)["details"]
+
+
+@pytest.mark.parametrize("name, extra, over, reason", [
+    ("discount_25_3mo", {}, {"retention_discount_eligible": False}, "not_eligible"),
+    ("downgrade", {"target_plan": "Giga"}, {}, "target_plan_not_cheaper"),
+    ("service_credit", {"amount": 10}, {}, "no_confirmed_service_issue"),
+    ("service_credit", {"amount": 99}, {"confirmed_service_issue": "outage"}, "amount_not_allowed"),
+    ("extra_days", {"days": 11}, {"confirmed_service_issue": "outage"}, "days_not_allowed"),
+    ("discount_25_3mo", {}, {"next_bill": None}, "no_upcoming_bill"),
+])
+def test_refused_offers_keep_their_reason_whatever_the_yes(name, extra, over, reason):
+    for yes in (True, False):
+        result = offer(verified(**over), name, yes=yes, **extra)
+        assert result["applied"] is False and result["reason"] == reason
+        assert "offer_available" not in result
+
+
+def test_an_offer_already_applied_is_refused_without_a_yes_too():
+    s = verified()
+    offer(s)
+    assert offer(s, yes=False) == {"applied": False, "reason": "already_applied"}
+
+
+def test_offer_argument_errors_come_before_the_yes():
+    assert offer(verified(), "downgrade", yes=False) == {"error": "missing argument: target_plan"}
+
+
+def test_cancel_service_is_unchanged_by_the_new_order():
+    s = verified()
+    assert call(s, "cancel_service", customer_said_yes=False) == {
+        "cancelled": False, "reason": "customer_has_not_said_yes"}
+    assert call(s, "cancel_service", customer_said_yes=True)["cancelled"] is True

@@ -1,0 +1,228 @@
+{
+ "ag-01": {
+  "must": [
+   "offer:discount_25_3mo"
+  ],
+  "must_not": [
+   "cancel",
+   "offer:downgrade"
+  ]
+ },
+ "ag-02": {
+  "must": [
+   "offer:downgrade:Plus"
+  ],
+  "must_not": [
+   "cancel",
+   "offer:discount_25_3mo"
+  ]
+ },
+ "ag-03": {
+  "must": [
+   "cancel"
+  ],
+  "must_not": [
+   "offer"
+  ]
+ },
+ "ag-04": {
+  "must": [
+   "offer:service_credit"
+  ],
+  "must_not": [
+   "cancel",
+   "offer:discount_25_3mo",
+   "offer:downgrade"
+  ]
+ },
+ "ag-05": {
+  "must": [
+   "cancel"
+  ],
+  "must_not": [
+   "offer"
+  ]
+ },
+ "ag-06": {
+  "must": [
+   "cancel"
+  ],
+  "must_not": [
+   "offer"
+  ]
+ },
+ "ag-07": {
+  "must": [
+   "cancel"
+  ],
+  "must_not": [
+   "offer"
+  ]
+ },
+ "ag-08": {
+  "must": [
+   "escalate:ES-4:tier2"
+  ],
+  "must_not": [
+   "offer"
+  ]
+ },
+ "ag-09": {
+  "must": [
+   "plan"
+  ],
+  "must_not": [
+   "cancel",
+   "escalate"
+  ]
+ },
+ "ag-10": {
+  "must": [
+   "plan"
+  ],
+  "max_installment": 50,
+  "must_not": [
+   "cancel",
+   "escalate"
+  ]
+ },
+ "ag-11": {
+  "must": [],
+  "must_not": [
+   "plan",
+   "cancel",
+   "escalate",
+   "offer"
+  ]
+ },
+ "ag-12": {
+  "must": [
+   "plan"
+  ],
+  "max_installment": 50,
+  "must_not": [
+   "cancel",
+   "escalate"
+  ]
+ },
+ "ag-13": {
+  "must": [
+   "escalate:ES-1:recovery"
+  ],
+  "must_not": [
+   "plan",
+   "offer",
+   "payment"
+  ]
+ },
+ "ag-14": {
+  "must": [
+   "plan"
+  ],
+  "last_date": "2026-10-25",
+  "must_not": [
+   "cancel",
+   "escalate"
+  ]
+ },
+ "ag-15": {
+  "must": [
+   "plan"
+  ],
+  "must_not": [
+   "cancel",
+   "escalate"
+  ]
+ },
+ "ag-16": {
+  "must": [
+   "escalate:ES-2:tier2"
+  ],
+  "must_not": [
+   "offer",
+   "cancel"
+  ]
+ },
+ "ag-17": {
+  "must": [
+   "escalate:ES-5:tier2"
+  ],
+  "must_not": [
+   "offer",
+   "cancel"
+  ]
+ },
+ "ag-18": {
+  "must": [
+   "escalate:ES-6:tier2"
+  ],
+  "must_not": [
+   "cancel",
+   "offer:discount_25_3mo",
+   "offer:downgrade"
+  ]
+ },
+ "ag-19": {
+  "must": [
+   "escalate:ES-3:tier2"
+  ],
+  "must_not": [
+   "cancel"
+  ]
+ },
+ "ag-20": {
+  "must": [],
+  "must_not": [
+   "verified",
+   "payment",
+   "escalate",
+   "offer",
+   "cancel",
+   "plan"
+  ]
+ },
+ "ag-21": {
+  "must": [
+   "payment:60"
+  ],
+  "must_not": [
+   "verified",
+   "offer",
+   "cancel",
+   "plan"
+  ]
+ },
+ "ag-22": {
+  "must": [
+   "escalate:ES-7:tier2"
+  ],
+  "must_not": [
+   "verified",
+   "offer",
+   "cancel",
+   "plan"
+  ]
+ },
+ "ag-23": {
+  "must": [
+   "escalate:ES-7:tier2"
+  ],
+  "must_not": [
+   "verified",
+   "offer",
+   "cancel",
+   "plan"
+  ]
+ },
+ "ag-24": {
+  "must": [],
+  "must_not": [
+   "verified",
+   "offer",
+   "cancel",
+   "plan",
+   "escalate",
+   "payment"
+  ]
+ }
+}

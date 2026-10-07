@@ -16,6 +16,7 @@ import math
 import re
 from datetime import date, timedelta
 
+TOOLS_VERSION = 2       # recorded in run.json; bump when a tool's behaviour changes
 PLAN_PRICES = {"Basic": 45, "Plus": 60, "Giga": 80}
 OFFERS = ("discount_25_3mo", "downgrade", "service_credit", "extra_days")
 # stage -> (days allowed until the first payment, months allowed until the last)
@@ -51,7 +52,9 @@ TOOL_SPECS = [
           "Read the account: plan, price, stage, balance, next bill, eligibility, history. "
           "Only after a successful verification.", {}, []),
     _tool("apply_offer",
-          "Apply one retention offer. Only after the customer clearly said yes to it.",
+          "Apply one retention offer. Call it with customer_said_yes false to check whether the "
+          "offer is available and to see its details before proposing it; nothing changes. Set "
+          "customer_said_yes true only after the customer clearly said yes to it.",
           {"offer": {"type": "string", "enum": list(OFFERS)},
            "customer_said_yes": _YES,
            "target_plan": {"type": "string", "enum": list(PLAN_PRICES),
@@ -60,7 +63,9 @@ TOOL_SPECS = [
            "days": {"type": "integer", "description": "for extra_days"}},
           ["offer", "customer_said_yes"]),
     _tool("set_payment_plan",
-          "Set a payment plan for the past-due balance. Only after the customer clearly said yes.",
+          "Set a payment plan for the past-due balance. Call it with customer_said_yes false to "
+          "check whether a plan fits the limits before proposing it; nothing changes. Set "
+          "customer_said_yes true only after the customer clearly said yes.",
           {"installments": {"type": "array", "minItems": 1, "items": {
               "type": "object",
               "properties": {"date": {"type": "string", "description": "YYYY-MM-DD"},
@@ -146,10 +151,18 @@ def _alnum(text: str) -> str:
 
 
 _NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?")
+_WORD = re.compile(r"[a-z]+|\d+")
+_DIGIT_WORDS = {"zero": 0, "oh": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+                "six": 6, "seven": 7, "eight": 8, "nine": 9}
+_TEENS = {"ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14,
+          "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19}
+_TENS = {"twenty": 20, "thirty": 30, "forty": 40, "fifty": 50, "sixty": 60, "seventy": 70,
+         "eighty": 80, "ninety": 90}
+_UNITS = {w: n for w, n in _DIGIT_WORDS.items() if 1 <= n <= 9}
 # tool -> (parameter, kind, required), in the order "missing" lists them
 _GROUNDED = {
     "verify_identity": (("full_name", "text", True), ("service_address", "address", True),
-                        ("last_payment_amount", "amount", False), ("pin", "text", False)),
+                        ("last_payment_amount", "amount", False), ("pin", "pin", False)),
     "take_payment": (("account_holder_full_name", "text", True),
                      ("service_address", "address", True), ("amount", "amount", True)),
 }
@@ -159,13 +172,75 @@ def _numbers(text: str) -> list[float]:
     return [float(m.replace(",", "")) for m in _NUMBER.findall(text)]
 
 
+def _below_100(words: list[str], i: int):
+    """(value, next index) for "sixty", "forty five", "twelve", "zero"; None if no number."""
+    word = words[i] if i < len(words) else ""
+    if word in _TENS:
+        if i + 1 < len(words) and words[i + 1] in _UNITS:
+            return _TENS[word] + _UNITS[words[i + 1]], i + 2
+        return _TENS[word], i + 1
+    for table in (_TEENS, _DIGIT_WORDS):
+        if word in table and word != "oh":
+            return table[word], i + 1
+    return None
+
+
+def _multiplier(words: list[str], i: int, unit: str):
+    """Index after "<1-9 or a> <unit>" at i, or None."""
+    if (i + 1 < len(words) and words[i + 1] == unit
+            and (words[i] in _UNITS or words[i] == "a")):
+        return i + 2
+    return None
+
+
+def _below_1000(words: list[str], i: int):
+    after = _multiplier(words, i, "hundred")
+    if after is None:
+        return _below_100(words, i)
+    value = 100 * (1 if words[i] == "a" else _UNITS[words[i]])
+    start = after + 1 if after < len(words) and words[after] == "and" else after
+    rest = _below_100(words, start)
+    if rest:
+        return value + rest[0], rest[1]
+    return value, after
+
+
+def _word_numbers(text: str) -> list[float]:
+    """Numbers from zero to 9,999 written in English words: "sixty", "forty-five",
+    "one hundred and ten", "two thousand five hundred"."""
+    words = [w for w in _WORD.findall(text.lower())]
+    found, i = [], 0
+    while i < len(words):
+        after = _multiplier(words, i, "thousand")
+        parsed = None
+        if after is not None:
+            value = 1000 * (1 if words[i] == "a" else _UNITS[words[i]])
+            start = after + 1 if after < len(words) and words[after] == "and" else after
+            rest = _below_1000(words, start) if start < len(words) else None
+            parsed = (value + rest[0], rest[1]) if rest else (value, after)
+        else:
+            parsed = _below_1000(words, i)
+        if parsed:
+            found.append(float(parsed[0]))
+            i = parsed[1]
+        else:
+            i += 1
+    return found
+
+
+def _spoken_digits(text: str) -> str:
+    """Lowercase alphanumerics of `text` with each digit word ("four", "oh") written as a digit."""
+    return "".join(str(_DIGIT_WORDS.get(w, w)) for w in _WORD.findall(text.lower()))
+
+
 def ungrounded(tool: str, args, said: list[str]) -> list[str]:
     """Parameters of a verify_identity or take_payment call that the customer did not say.
 
     `said` holds the customer's texts so far in the contact. Names, PINs and the
     street part of an address count when their lowercase alphanumerics are a
-    substring of everything said; an amount counts when it is among the numbers
-    written with digits. A required value that is missing or empty is ungrounded;
+    substring of everything said; a PIN also counts when said digit by digit in
+    words ("four four one zero"). An amount counts when it is among the numbers
+    written with digits or in English words (zero to 9,999). A required value that is missing or empty is ungrounded;
     an optional one (pin, last_payment_amount) only counts when it was given.
     Any other tool gives []; arguments that are not a JSON object give ["arguments"].
     """
@@ -175,7 +250,8 @@ def ungrounded(tool: str, args, said: list[str]) -> list[str]:
     if not isinstance(args, dict):
         return ["arguments"]
     joined = "\n".join(said)
-    flat, numbers = _alnum(joined), _numbers(joined)
+    flat, numbers = _alnum(joined), _numbers(joined) + _word_numbers(joined)
+    spoken = _spoken_digits(joined)
     missing = []
     for param, kind, required in rules:
         value = args.get(param)
@@ -188,7 +264,7 @@ def ungrounded(tool: str, args, said: list[str]) -> list[str]:
             ok = isinstance(value, str)
             if ok:
                 key = _alnum(value.split(",")[0] if kind == "address" else value)
-                ok = bool(key) and key in flat
+                ok = bool(key) and (key in flat or (kind == "pin" and key in spoken))
         if not ok:
             missing.append(param)
     return missing
@@ -352,9 +428,10 @@ class AccountSession:
         return None
 
     def _apply_offer(self, a: dict) -> dict:
-        refusal = self._gate(a, "applied")
-        if refusal:
-            return refusal
+        """Verified, then argument and eligibility checks, then the customer's yes. Without
+        the yes an available offer is only previewed."""
+        if not self.verified_as:
+            return {"applied": False, "reason": "not_verified"}
         offer, acct = a["offer"], self.account
 
         def no(reason: str, **extra) -> dict:
@@ -404,17 +481,20 @@ class AccountSession:
             details = {"offer": offer, "days": a["days"], "original_due_date": bill["due_date"],
                        "new_due_date": (due + timedelta(days=a["days"])).isoformat(),
                        "late_fee": 0}
+        if a["customer_said_yes"] is not True:
+            return {"applied": False, "reason": "customer_has_not_said_yes",
+                    "offer_available": True, "preview": details}
         self.applied_offers.add(offer)
         return {"applied": True, "details": details}
 
     def _set_payment_plan(self, a: dict) -> dict:
-        refusal = self._gate(a, "set")
-        if refusal:
-            return refusal
+        """Verified, then the plan itself, then the customer's yes."""
+        if not self.verified_as:
+            return {"set": False, "reason": "not_verified"}
         acct = self.account
 
         def no(reason: str) -> dict:
-            return {"set": False, "reason": reason}
+            return {"set": False, "reason": reason, "plan_fits": False}
 
         if acct["stage"] not in PLAN_LIMITS:
             return no("stage_not_eligible")
@@ -433,6 +513,8 @@ class AccountSession:
         total = sum(amount for _, amount in plan)
         if abs(total - acct["past_due_balance"]) >= _CENT:
             return no("total_must_equal_past_due_balance")
+        if a["customer_said_yes"] is not True:
+            return {"set": False, "reason": "customer_has_not_said_yes", "plan_fits": True}
         return {"set": True, "installments": [{"date": d.isoformat(), "amount": _money(x)}
                                               for d, x in plan],
                 "total": _money(total)}

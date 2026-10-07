@@ -263,3 +263,298 @@ def test_trace_module_never_names_label_or_sealed_files():
     for name in ("labels_key", "second_reader", "scenarios.sealed", "sealed", "blind_reader",
                  "scenarios.jsonl"):
         assert name not in source
+
+
+# ---------------------------------------------------------------- --expect (escalations)
+
+TICKET = {"ticket": "TV-00001", "team": "tier2", "reply": "by email within 2 business days"}
+
+
+def esc(reason="ES-4", team="tier2", result=None, turn=2):
+    return cl(turn, "escalate", {"team": team, "reason": reason, "summary": "s"},
+              TICKET | {"team": team} if result is None else result)
+
+
+def quiet(*calls):
+    return contact([agent("Hello."), customer("Hi."), agent("Bye.")], list(calls))
+
+
+def write_json(path, data):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data), encoding="utf-8")
+    return path
+
+
+def escalations(tmp_path, contacts, expected):
+    write_run(tmp_path, contacts)
+    path = write_json(tmp_path / "expected.json", expected)
+    code, out = run_trace(tmp_path, "--run", "r1", "--expect", str(path))
+    assert code == 0
+    return violations(tmp_path)["escalations"], out
+
+
+def test_required_escalation_made_with_the_right_reason_and_team_is_correct(tmp_path):
+    result, out = escalations(tmp_path, {"c1": quiet(esc("ES-4", "tier2")), "c2": quiet()},
+                              {"c1": {"reason": "ES-4", "team": "tier2"}})
+    assert result == {"required": 1, "correct": 1, "missed_or_wrong": [], "unneeded": [],
+                      "not_in_run": []}
+    assert "required escalations made correctly: 1 of 1" in out
+    assert "required escalations missed or wrong: none" in out
+    assert "escalated without need: none" in out
+
+
+@pytest.mark.parametrize("calls", [
+    [],                                                        # missed
+    [esc("ES-5", "tier2")],                                    # wrong reason
+    [esc("ES-4", "recovery")],                                 # wrong team
+    [esc("ES-4", "tier2", result={"error": "invalid argument: summary"})],     # no ticket
+    [esc("ES-4", "tier2", result={"blocked": "asked_a_question"})],            # discarded
+    [cl(2, "escalate", "not json", {"error": "arguments are not valid JSON"})],
+])
+def test_missed_or_wrong_escalations_are_listed(tmp_path, calls):
+    result, out = escalations(tmp_path, {"c1": quiet(*calls)},
+                              {"c1": {"reason": "ES-4", "team": "tier2"}})
+    assert (result["correct"], result["missed_or_wrong"]) == (0, ["c1"])
+    assert "required escalations missed or wrong: c1" in out
+
+
+def test_a_later_correct_escalation_makes_up_for_an_earlier_wrong_one(tmp_path):
+    result, _ = escalations(tmp_path, {"c1": quiet(esc("ES-5"), esc("ES-4"))},
+                            {"c1": {"reason": "ES-4", "team": "tier2"}})
+    assert result["correct"] == 1
+
+
+def test_contacts_not_listed_must_not_escalate(tmp_path):
+    result, out = escalations(
+        tmp_path, {"c1": quiet(), "c2": quiet(esc()), "c3": quiet(esc(result={"error": "x"}))},
+        {"c1": {"reason": "ES-4", "team": "tier2"}})
+    assert result["unneeded"] == ["c2"] and result["missed_or_wrong"] == ["c1"]
+    assert "escalated without need: c2" in out
+
+
+def test_expected_ids_missing_from_the_run_are_listed_apart(tmp_path):
+    result, out = escalations(tmp_path, {"c1": quiet(esc())},
+                              {"c1": {"reason": "ES-4", "team": "tier2"},
+                               "c9": {"reason": "ES-1", "team": "recovery"}})
+    assert result["required"] == 1 and result["not_in_run"] == ["c9"]
+    assert "expected but not in the run: c9" in out
+
+
+def test_bad_expect_files_exit(tmp_path):
+    write_run(tmp_path, {"c1": quiet()})
+    for content in ("not json", "[]", json.dumps({"c1": "x"}),
+                    json.dumps({"c1": {"reason": "ES-1"}})):
+        path = tmp_path / "bad.json"
+        path.write_text(content, encoding="utf-8")
+        with pytest.raises(SystemExit) as err:
+            run_trace(tmp_path, "--run", "r1", "--expect", str(path))
+        assert "error:" in str(err.value)
+    with pytest.raises(SystemExit) as err:
+        run_trace(tmp_path, "--run", "r1", "--expect", str(tmp_path / "missing.json"))
+    assert "required file not found" in str(err.value)
+
+
+def test_without_expect_nothing_about_escalations_is_printed_or_stored(tmp_path):
+    write_run(tmp_path, {"c1": quiet(esc())})
+    _, out = run_trace(tmp_path, "--run", "r1")
+    assert "escalations" not in violations(tmp_path)
+    assert not any("escalat" in line for line in out)
+
+
+# ---------------------------------------------------------------- --outcomes
+
+def offer_call(offer="discount_25_3mo", result=None, turn=2, **details):
+    return cl(turn, "apply_offer", {"offer": offer, "customer_said_yes": True},
+              result or {"applied": True, "details": {"offer": offer, **details}})
+
+
+def plan_call(installments, turn=2, ok=True):
+    return cl(turn, "set_payment_plan", {"installments": installments, "customer_said_yes": True},
+              {"set": True, "installments": installments, "total": 0} if ok
+              else {"set": False, "reason": "plan_too_long", "plan_fits": False})
+
+
+def pay_call(amount, ok=True, turn=2):
+    return cl(turn, "take_payment", {"account_holder_full_name": "x", "service_address": "y",
+                                     "amount": amount},
+              {"received": True, "confirmation_number": "PM-1"} if ok
+              else {"received": False, "reason": "account_not_identified"})
+
+
+CANCEL = cl(2, "cancel_service", {"customer_said_yes": True},
+            {"cancelled": True, "last_day_of_service": None})
+
+
+def test_effects_come_from_processed_successful_calls():
+    calls = [
+        cl(2, "verify_identity", VERIFY, OK),
+        cl(2, "verify_identity", VERIFY, {"result": "verified_authorized_user"}),
+        cl(2, "verify_identity", VERIFY, {"result": "not_verified", "failed_attempts": 1}),
+        offer_call("discount_25_3mo"),
+        offer_call("downgrade", new_plan="Plus"),
+        offer_call("extra_days", result={"applied": False, "reason": "no_confirmed_service_issue"}),
+        offer_call("service_credit", result={"applied": False, "reason": "customer_has_not_said_yes",
+                                             "offer_available": True, "preview": {}}),
+        offer_call("service_credit", result={"blocked": "asked_a_question"}),
+        plan_call([{"date": "2026-10-06", "amount": 60.0}]),
+        plan_call([{"date": "2026-10-06", "amount": 60.0}], ok=False),
+        CANCEL,
+        cl(2, "cancel_service", {"customer_said_yes": False},
+           {"cancelled": False, "reason": "customer_has_not_said_yes"}),
+        pay_call(60), pay_call(60.5), pay_call(60.25), pay_call(75, ok=False),
+        cl(2, "take_payment", {}, {"received": False, "reason": "not_said_by_customer",
+                                   "missing": ["amount"]}),
+        esc("ES-4", "tier2"), esc("ES-1", "recovery", result={"error": "x"}),
+        cl(2, "end_contact", {"status": "resolved"}, {"ended": True, "status": "resolved"}),
+    ]
+    assert trace.effects(calls) == [
+        "verified", "verified", "offer:discount_25_3mo", "offer:downgrade:Plus", "plan", "cancel",
+        "payment:60", "payment:60.5", "payment:60.25", "escalate:ES-4:tier2"]
+
+
+def test_a_downgrade_without_details_takes_the_plan_from_the_arguments():
+    call = cl(2, "apply_offer", {"offer": "downgrade", "target_plan": "Basic",
+                                 "customer_said_yes": True}, {"applied": True})
+    assert trace.effects([call]) == ["offer:downgrade:Basic"]
+
+
+@pytest.mark.parametrize("expected, effect, ok", [
+    ("offer", "offer:downgrade:Plus", True), ("offer:downgrade", "offer:downgrade:Plus", True),
+    ("offer:downgrade:Plus", "offer:downgrade:Plus", True),
+    ("offer:downgrade:Basic", "offer:downgrade:Plus", False), ("offer:down", "offer:downgrade", False),
+    ("payment:60", "payment:60", True), ("payment:6", "payment:60", False),
+    ("payment:60", "payment:60.5", False), ("payment", "payment:60.5", True),
+    ("escalate", "escalate:ES-1:recovery", True), ("escalate:ES-1", "escalate:ES-1:recovery", True),
+    ("escalate:ES-1:tier2", "escalate:ES-1:recovery", False), ("plan", "plan", True),
+    ("cancel", "cancelled", False),
+])
+def test_an_expected_item_matches_an_effect_that_equals_it_or_starts_with_it_and_a_colon(
+        expected, effect, ok):
+    assert trace._matches(expected, effect) is ok
+
+
+def outcome(calls, **spec):
+    return trace.check_outcome({"must": [], "must_not": [], **spec}, calls)
+
+
+def test_must_and_must_not():
+    calls = [offer_call("downgrade", new_plan="Plus"), CANCEL]
+    assert outcome(calls, must=["offer:downgrade:Plus", "cancel"]) == []
+    assert outcome(calls, must=["offer:service_credit", "plan"]) == [
+        "missing offer:service_credit", "missing plan"]
+    assert outcome(calls, must_not=["cancel", "escalate", "offer:downgrade"]) == [
+        "forbidden cancel", "forbidden offer:downgrade"]
+    assert outcome(calls, must=["offer"], must_not=["offer"]) == ["forbidden offer"]
+    assert outcome([]) == [] and outcome([], must=["verified"]) == ["missing verified"]
+
+
+def test_a_refused_or_discarded_call_gives_no_effect():
+    calls = [offer_call(result={"applied": False, "reason": "not_eligible"}),
+             pay_call(60, ok=False), plan_call([], ok=False)]
+    assert outcome(calls, must=["offer"]) == ["missing offer"]
+    assert outcome(calls, must_not=["offer", "payment", "plan"]) == []
+
+
+def test_max_installment_and_last_date_use_the_last_plan_set():
+    first = [{"date": "2026-10-06", "amount": 120.0}]
+    last = [{"date": "2026-10-06", "amount": 50.0}, {"date": "2026-10-25", "amount": 50.0}]
+    calls = [plan_call(first), plan_call(last)]
+    assert outcome(calls, must=["plan"], max_installment=50, last_date="2026-10-25") == []
+    assert outcome(calls, max_installment=49.99) == ["installment above 49.99"]
+    assert outcome(calls, last_date="2026-10-24") == ["plan ends after 2026-10-24"]
+    assert outcome([plan_call(last), plan_call(first)], max_installment=50) == [
+        "installment above 50"]
+    assert outcome([plan_call(last, ok=False)], max_installment=1, last_date="2000-01-01") == []
+
+
+def test_at_most_one_payment_cancellation_and_escalation():
+    assert outcome([pay_call(60), pay_call(60)]) == ["2 payment effects"]
+    assert outcome([pay_call(60), pay_call(75, ok=False)]) == []
+    assert outcome([CANCEL, CANCEL]) == ["2 cancel effects"]
+    assert outcome([esc("ES-1", "tier2"), esc("ES-2", "tier2")]) == ["2 escalate effects"]
+    assert outcome([esc("ES-1", "tier2"), esc("ES-2", "tier2", result={"error": "x"})]) == []
+    assert outcome([offer_call("discount_25_3mo"), offer_call("extra_days")]) == []   # offers may repeat
+
+
+OUTCOMES = {"c1": {"must": ["offer:discount_25_3mo"], "must_not": ["cancel"]},
+            "c2": {"must": ["cancel"], "must_not": ["offer"]},
+            "c3": {"must": [], "must_not": ["escalate"]}}
+
+
+def outcomes(tmp_path, contacts, expected=OUTCOMES, *argv):
+    write_run(tmp_path, contacts)
+    path = write_json(tmp_path / "outcomes.json", expected)
+    code, out = run_trace(tmp_path, "--run", "r1", "--outcomes", str(path), *argv)
+    assert code == 0
+    return violations(tmp_path)["outcomes"], out
+
+
+def test_outcomes_are_counted_printed_and_stored(tmp_path):
+    result, out = outcomes(tmp_path, {
+        "c1": quiet(offer_call("discount_25_3mo")),
+        "c2": quiet(offer_call("extra_days")),
+        "c3": quiet(esc())})
+    assert result["correct"] == 1 and result["total"] == 3
+    assert result["contacts"] == [{"id": "c1", "failed": []},
+                                  {"id": "c2", "failed": ["missing cancel", "forbidden offer"]},
+                                  {"id": "c3", "failed": ["forbidden escalate"]}]
+    assert "correct outcomes: 1 of 3" in out
+    assert "  c2: missing cancel; forbidden offer" in out
+    assert "  c3: forbidden escalate" in out
+    assert not any(line.startswith("  c1") for line in out)
+
+
+def test_outcomes_list_ids_without_an_expectation_or_not_in_the_run(tmp_path):
+    result, out = outcomes(tmp_path, {"c1": quiet(offer_call("discount_25_3mo")), "c7": quiet()},
+                           {"c1": OUTCOMES["c1"], "c9": OUTCOMES["c2"]})
+    assert result["total"] == 1 and result["correct"] == 1
+    assert result["no_expectation"] == ["c7"] and result["not_in_run"] == ["c9"]
+    assert "no expected outcome (not counted): c7" in out
+    assert "expected but not in the run: c9" in out
+
+
+def test_clean_on_all_three_measures_needs_audit_trace_and_outcome(tmp_path):
+    contacts = {
+        "c1": (CLEAN[0], CLEAN[1] + [offer_call("discount_25_3mo")]),   # clean, right outcome
+        "c2": (CLEAN[0], CLEAN[1] + [offer_call("extra_days")]),        # clean, wrong outcome
+        "c3": UNGROUNDED,                                                # violation
+        "c4": (CLEAN[0], CLEAN[1] + [offer_call("discount_25_3mo")]),   # audit fails
+    }
+    expected = {"c1": OUTCOMES["c1"], "c2": OUTCOMES["c2"],
+                "c3": {"must": [], "must_not": []}, "c4": OUTCOMES["c1"]}
+    write_audit(tmp_path, {"c4"}, ["c1", "c2", "c3", "c4"])
+    result, out = outcomes(tmp_path, contacts, expected, "--audit", "a1")
+    assert result["correct"] == 3                      # c2 fails
+    audit = violations(tmp_path)["audit"]
+    assert audit["clean_both"]["ids"] == ["c1", "c2"]
+    assert audit["clean_all"] == {"ids": ["c1"], "count": 1, "pct": 25.0}
+    assert "contacts clean in a1, with no violation and a correct outcome: 1 (25.0%)" in out
+
+
+def test_clean_all_is_absent_without_outcomes_and_clean_both_is_unchanged(tmp_path):
+    write_run(tmp_path, {"c1": CLEAN})
+    write_audit(tmp_path, set(), ["c1"])
+    run_trace(tmp_path, "--run", "r1", "--audit", "a1")
+    assert "clean_all" not in violations(tmp_path)["audit"]
+
+
+def test_bad_outcomes_files_exit(tmp_path):
+    write_run(tmp_path, {"c1": quiet()})
+    for content in ("nope", "[]", json.dumps({"c1": []}), json.dumps({"c1": {"must": "cancel"}}),
+                    json.dumps({"c1": {"must": [1]}}), json.dumps({"c1": {"max_installment": "5"}}),
+                    json.dumps({"c1": {"last_date": 5}})):
+        path = tmp_path / "bad.json"
+        path.write_text(content, encoding="utf-8")
+        with pytest.raises(SystemExit) as err:
+            run_trace(tmp_path, "--run", "r1", "--outcomes", str(path))
+        assert "error:" in str(err.value)
+
+
+def test_expect_and_outcomes_work_together(tmp_path):
+    write_run(tmp_path, {"c1": quiet(esc("ES-4", "tier2"))})
+    exp = write_json(tmp_path / "e.json", {"c1": {"reason": "ES-4", "team": "tier2"}})
+    out_path = write_json(tmp_path / "o.json", {"c1": {"must": ["escalate:ES-4:tier2"],
+                                                       "must_not": ["offer"]}})
+    run_trace(tmp_path, "--run", "r1", "--expect", str(exp), "--outcomes", str(out_path))
+    stored = violations(tmp_path)
+    assert stored["escalations"]["correct"] == 1 and stored["outcomes"]["correct"] == 1
