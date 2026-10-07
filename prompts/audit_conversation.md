@@ -41,7 +41,7 @@ Reply with one JSON object and nothing else, in this shape:
     {
       "category": "one of the six names",
       "rules": ["rule IDs from the policy, for example CL-7"],
-      "turns": [the turn numbers where it happens],
+      "turns": [4, 5],
       "evidence": "a short quote from the conversation",
       "why": "one sentence"
     }
@@ -50,6 +50,8 @@ Reply with one JSON object and nothing else, in this shape:
 }
 
 Every category marked "fail" needs at least one finding, and every finding's category must be marked "fail". When every category passes, "findings" is an empty list.
+
+"turns" holds the numbers of the turns where the failure happens. The answer must be valid JSON: double quotes around every key and string, no comments, no trailing commas. Inside "evidence", "why" and "dropped", use single quotes if you need to quote words.
 
 <policy>
 {policy}
