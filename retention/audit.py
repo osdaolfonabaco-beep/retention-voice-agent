@@ -114,28 +114,34 @@ def validate_audit(data: dict, n_turns: int, known_rules: set[str]) -> tuple[dic
 
 # ---------------------------------------------------------------- data and prompt
 
+def read_conversation_file(path: Path, seen: set[str]) -> list[dict]:
+    """The conversations of one file. `seen` collects ids to reject duplicates."""
+    if not path.is_file():
+        raise SystemExit(f"error: required file not found: {path}")
+    conversations: list[dict] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            conv = json.loads(line)
+            complete = all(k in conv for k in ("id", "channel", "account", "turns"))
+        except (json.JSONDecodeError, TypeError):
+            complete = False
+        if not complete:
+            raise SystemExit(f"error: bad conversation line in {path}")
+        if conv["id"] in seen:
+            raise SystemExit(f"error: duplicate conversation id {conv['id']}")
+        seen.add(conv["id"])
+        conversations.append(conv)
+    return conversations
+
+
 def load_conversations(data_dir: Path) -> list[dict]:
     """All conversations of DATASETS, in dataset order. Only conversation files are read."""
     conversations: list[dict] = []
     seen: set[str] = set()
     for name in DATASETS:
-        path = data_dir / name / "conversations.jsonl"
-        if not path.is_file():
-            raise SystemExit(f"error: required file not found: {path}")
-        for line in path.read_text(encoding="utf-8").splitlines():
-            if not line.strip():
-                continue
-            try:
-                conv = json.loads(line)
-                complete = all(k in conv for k in ("id", "channel", "account", "turns"))
-            except (json.JSONDecodeError, TypeError):
-                complete = False
-            if not complete:
-                raise SystemExit(f"error: bad conversation line in {path}")
-            if conv["id"] in seen:
-                raise SystemExit(f"error: duplicate conversation id {conv['id']}")
-            seen.add(conv["id"])
-            conversations.append(conv)
+        conversations += read_conversation_file(data_dir / name / "conversations.jsonl", seen)
     return conversations
 
 
@@ -315,7 +321,10 @@ def run_mode(args, client, model, root: Path, sleep, now, say=print) -> int:
     data_dir = root / "data"
     system_prompt, prompt_sha, policy_sha = build_system_prompt(
         root / "prompts" / "audit_conversation.md", root / "docs" / "policy.md")
-    selected = select_conversations(data_dir, args.split)
+    if args.conversations is not None:
+        selected = read_conversation_file(Path(args.conversations), set())
+    else:
+        selected = select_conversations(data_dir, args.split)
 
     out_dir = data_dir / "audits" / args.run
     meta = {"run": args.run, "model": model, "prompt_sha256": prompt_sha,
@@ -356,13 +365,15 @@ def _parse_args(argv):
                    help="with --list-models: only ids containing TEXT (case-insensitive)")
     p.add_argument("--run", metavar="NAME", help="audit a split; output in data/audits/NAME/")
     p.add_argument("--split", choices=("tune", "check", "all"), help="with --run: ids to audit")
+    p.add_argument("--conversations", metavar="PATH",
+                   help="with --run, instead of --split: audit every conversation in this file")
     p.add_argument("--limit", type=int, metavar="N", help="with --run: audit at most N pending")
     p.add_argument("--max-calls", type=int, metavar="N",
                    help=f"with --run: call budget (default {DEFAULT_MAX_CALLS})")
     p.add_argument("--dry-run", action="store_true",
                    help="with --run: show counts and a token estimate, call nothing")
     args = p.parse_args(argv)
-    run_only = (args.split, args.limit, args.max_calls, args.dry_run or None)
+    run_only = (args.split, args.conversations, args.limit, args.max_calls, args.dry_run or None)
     modes = [args.ping, args.list_models, args.run is not None]
     if (sum(modes) != 1
             or (args.contains is not None and not args.list_models)
@@ -370,8 +381,8 @@ def _parse_args(argv):
         p.print_usage()
         return p, None
     if args.run is not None:
-        if args.split is None:
-            p.error("--split is required with --run")
+        if (args.split is None) == (args.conversations is None):
+            p.error("--run needs exactly one of --split and --conversations")
         if not RUN_NAME.fullmatch(args.run):
             p.error("--run NAME may only hold letters, digits, '.', '_' and '-'")
         for flag in ("limit", "max_calls"):

@@ -1,0 +1,11 @@
+{"ts": "2026-10-07T18:15:22+00:00", "id": "ag-01", "role": "agent", "status": "ok", "error": null, "input_tokens": 5407, "output_tokens": 48}
+{"ts": "2026-10-07T18:15:24+00:00", "id": "ag-01", "role": "agent", "status": "ok", "error": null, "input_tokens": 5481, "output_tokens": 78}
+{"ts": "2026-10-07T18:15:26+00:00", "id": "ag-01", "role": "agent", "status": "ok", "error": null, "input_tokens": 5585, "output_tokens": 70}
+{"ts": "2026-10-07T18:15:27+00:00", "id": "ag-01", "role": "agent", "status": "ok", "error": null, "input_tokens": 5681, "output_tokens": 31}
+{"ts": "2026-10-07T18:15:30+00:00", "id": "ag-01", "role": "customer", "status": "ok", "error": null, "input_tokens": 610, "output_tokens": 144}
+{"ts": "2026-10-07T18:15:31+00:00", "id": "ag-01", "role": "agent", "status": "ok", "error": null, "input_tokens": 5778, "output_tokens": 120}
+{"ts": "2026-10-07T18:15:33+00:00", "id": "ag-01", "role": "agent", "status": "ok", "error": null, "input_tokens": 5923, "output_tokens": 33}
+{"ts": "2026-10-07T18:15:34+00:00", "id": "ag-01", "role": "customer", "status": "ok", "error": null, "input_tokens": 778, "output_tokens": 59}
+{"ts": "2026-10-07T18:15:36+00:00", "id": "ag-02", "role": "agent", "status": "ok", "error": null, "input_tokens": 5406, "output_tokens": 49}
+{"ts": "2026-10-07T18:15:37+00:00", "id": "ag-02", "role": "agent", "status": "ok", "error": null, "input_tokens": 5481, "output_tokens": 56}
+{"ts": "2026-10-07T18:15:38+00:00", "id": "ag-02", "role": "agent", "status": "ok", "error": null, "input_tokens": 5560, "output_tokens": 12}

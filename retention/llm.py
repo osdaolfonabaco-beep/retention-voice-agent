@@ -72,6 +72,38 @@ class ChatClient:
             return "", counts
         return resp.choices[0].message.content or "", counts
 
+    def chat_with_tools(self, model: str, messages: list[dict],
+                        tools: list[dict] | None = None,
+                        reasoning_effort: str | None = None) -> tuple[dict, dict]:
+        """One chat call that may ask for tools.
+
+        Returns ({"content": str, "tool_calls": [{"id", "name", "arguments"}]}, usage),
+        usage as in `complete_with_usage`. `reasoning_effort` is sent only when not None.
+        """
+        kwargs = {"model": model, "messages": messages}
+        if tools:
+            kwargs["tools"] = tools
+        if reasoning_effort is not None:
+            kwargs["reasoning_effort"] = reasoning_effort
+        try:
+            resp = self._client.chat.completions.create(**kwargs)
+        except Exception as exc:
+            raise _map_error(exc) from None
+        usage = getattr(resp, "usage", None)
+        counts = {
+            "input_tokens": getattr(usage, "prompt_tokens", None),
+            "output_tokens": getattr(usage, "completion_tokens", None),
+        }
+        message = {"content": "", "tool_calls": []}
+        if resp.choices:
+            raw = resp.choices[0].message
+            message["content"] = raw.content or ""
+            message["tool_calls"] = [
+                {"id": call.id, "name": call.function.name, "arguments": call.function.arguments}
+                for call in (getattr(raw, "tool_calls", None) or [])
+            ]
+        return message, counts
+
     def list_models(self) -> list[str]:
         try:
             page = self._client.models.list()

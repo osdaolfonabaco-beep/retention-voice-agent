@@ -19,6 +19,9 @@ Portfolio project. An auditor reads a retention conversation and flags failures 
 - Tests with pytest in `tests/`. Run: `.venv/bin/python -m pytest -q`.
 - Model access through an OpenAI-compatible endpoint. Config comes from `LLM_BASE_URL` and `LLM_API_KEY` in `.env`.
 - The auditor's model settings come from `AUDITOR_BASE_URL`, `AUDITOR_API_KEY` and `AUDITOR_MODEL` in `.env`.
+- Agent model calls send `reasoning_effort: "none"` (`AGENT_REASONING_EFFORT` in `retention/agent.py`), because gpt-6-luna rejects function tools with reasoning on `/v1/chat/completions`; it is recorded in `run.json`.
+- The agent's opening turn of a contact is called without tools (`allow_tools=False`), because no tool can be needed before the customer speaks and a trial showed it inventing `verify_identity` values and locking the account.
+- The agent and the simulated customer use `AGENT_MODEL` and `CUSTOMER_MODEL` (required) in `.env`. `AGENT_BASE_URL` and `AGENT_API_KEY` are optional and default to the `AUDITOR_` ones.
 - Code, comments, and docs in English.
 
 ## Layout
@@ -26,6 +29,12 @@ Portfolio project. An auditor reads a retention conversation and flags failures 
 - `docs/policy.md`: the retention policy. Its rule IDs (VR, FL, OF, PP, PR, ES, CL, TN) are the source of truth.
 - `retention/`: Python package with the project code.
 - `prompts/audit_conversation.md`: the auditor's system prompt template (one placeholder, `{policy}`). Written by the owner; do not edit.
+- `prompts/agent_system.md`, `prompts/customer_simulator.md`: the agent's and the simulated customer's prompt templates. Written by the owner; do not edit.
+- `retention/tools.py`: the agent's tools over one synthetic account (`AccountSession`, `TOOL_SPECS`).
+- `retention/agent.py`: the agent turn loop and the runner (`python -m retention.agent --run NAME`).
+- `retention/report.py`: summary of an audit run (`python -m retention.report --run NAME`). Never reads labels.
 - `tests/`: unit tests.
 - `data/`: synthetic conversations and labels.
-- `data/audits/`: audit runs, one folder per run (`audits.jsonl`, `log.jsonl`, `run.json`, and the evaluator's metrics and disagreements).
+- `data/agent/scenarios.jsonl`: scenarios for the agent runs. `expected` is documentation for the owner and is never sent to a model.
+- `data/agent_runs/`: agent runs, one folder per run (`conversations.jsonl`, `tool_calls.jsonl`, `log.jsonl`, `run.json`).
+- `data/audits/`: audit runs, one folder per run (`audits.jsonl`, `log.jsonl`, `run.json`, `summary.json` from the report, and the evaluator's metrics and disagreements). `retention/audit.py` takes `--split` or `--conversations PATH`.

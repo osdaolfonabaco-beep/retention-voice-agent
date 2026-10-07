@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 REQUIRED = ("LLM_BASE_URL", "LLM_API_KEY")
 AUDITOR_REQUIRED = ("AUDITOR_BASE_URL", "AUDITOR_API_KEY", "AUDITOR_MODEL")
+AGENT_REQUIRED = ("AGENT_MODEL", "CUSTOMER_MODEL")
 
 
 class ConfigError(Exception):
@@ -52,3 +53,25 @@ def load_auditor_settings(path: Path | None = None) -> tuple[str, str, str]:
     if missing:
         raise ConfigError(f"missing in {path.name}: {', '.join(missing)}")
     return values["AUDITOR_BASE_URL"], values["AUDITOR_API_KEY"], values["AUDITOR_MODEL"]
+
+
+def load_agent_settings(path: Path | None = None) -> tuple[str, str, str, str]:
+    """Return (base_url, api_key, agent_model, customer_model).
+
+    AGENT_BASE_URL and AGENT_API_KEY fall back to the AUDITOR_ ones. Errors name
+    the variable, never its value.
+    """
+    path = Path(path) if path else ROOT / ".env"
+    if not path.is_file():
+        raise ConfigError(f"{path.name} not found; copy .env.example and fill it in")
+    values = parse_env(path.read_text(encoding="utf-8"))
+    missing = [name for name in AGENT_REQUIRED if not values.get(name)]
+    base_url = values.get("AGENT_BASE_URL") or values.get("AUDITOR_BASE_URL")
+    api_key = values.get("AGENT_API_KEY") or values.get("AUDITOR_API_KEY")
+    if not base_url:
+        missing.append("AGENT_BASE_URL (or AUDITOR_BASE_URL)")
+    if not api_key:
+        missing.append("AGENT_API_KEY (or AUDITOR_API_KEY)")
+    if missing:
+        raise ConfigError(f"missing in {path.name}: {', '.join(missing)}")
+    return base_url, api_key, values["AGENT_MODEL"], values["CUSTOMER_MODEL"]

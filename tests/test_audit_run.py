@@ -519,6 +519,88 @@ def test_run_options_without_run_mode_print_usage(tmp_path, capsys, argv):
     assert "usage" in capsys.readouterr().out.lower()
 
 
+# ------------------------------------------------------------------- --conversations
+
+def write_conversations(path, ids):
+    path.write_text("".join(json.dumps(conv(i)) + "\n" for i in ids), encoding="utf-8")
+    return path
+
+
+def test_conversations_file_is_audited_whole_without_the_split(tmp_path, capsys):
+    run = Run(tmp_path)
+    (run.root / "data" / "dev_split.json").unlink()          # not needed with --conversations
+    path = write_conversations(tmp_path / "agent.jsonl", ["ag-01", "ag-02"])
+    client = FakeClient([reply(), reply({"privacy_breach": {}})])
+    code = audit.main(["--run", "r1", "--conversations", str(path)], client=client,
+                      env_path=write_env(tmp_path), root=run.root, sleep=run.sleeps.append,
+                      now=lambda: NOW)
+    assert code == 0
+    assert [r["id"] for r in run.rows("audits.jsonl")] == ["ag-01", "ag-02"]
+    sent = json.loads(client.calls[0][1][1]["content"])
+    assert sent["turns"][0]["text"] == "hello from ag-01" and "id" not in sent
+    out = capsys.readouterr().out
+    assert "selected: 2  done: 0  to attempt: 2" in out and "calls: 2/150" in out
+
+
+def test_conversations_resume_limit_and_dry_run(tmp_path, capsys):
+    run = Run(tmp_path)
+    path = write_conversations(tmp_path / "agent.jsonl", ["ag-01", "ag-02", "ag-03"])
+
+    def go(client, *argv):
+        return audit.main(["--run", "r1", "--conversations", str(path), *argv], client=client,
+                          env_path=write_env(tmp_path), root=run.root, sleep=run.sleeps.append,
+                          now=lambda: NOW)
+
+    assert go(FakeClient([reply()]), "--limit", "1") == 0
+    capsys.readouterr()
+    client = FakeClient([])
+    assert go(client, "--dry-run") == 0
+    assert "selected: 3  done: 1  pending: 2" in capsys.readouterr().out
+    assert go(FakeClient([reply(), reply()])) == 0
+    assert [r["id"] for r in run.rows("audits.jsonl")] == ["ag-01", "ag-02", "ag-03"]
+
+
+def test_conversations_file_errors(tmp_path):
+    root = make_root(tmp_path)
+    env = write_env(tmp_path)
+
+    def go(path):
+        return audit.main(["--run", "r1", "--conversations", str(path)], client=FakeClient([]),
+                          env_path=env, root=root)
+
+    missing = tmp_path / "nope.jsonl"
+    with pytest.raises(SystemExit) as err:
+        go(missing)
+    assert str(err.value) == f"error: required file not found: {missing}"
+    bad = tmp_path / "bad.jsonl"
+    bad.write_text('{"id": "x"}\n', encoding="utf-8")
+    with pytest.raises(SystemExit) as err:
+        go(bad)
+    assert str(err.value) == f"error: bad conversation line in {bad}"
+    dup = write_conversations(tmp_path / "dup.jsonl", ["x", "x"])
+    with pytest.raises(SystemExit, match="duplicate conversation id x"):
+        go(dup)
+    assert not (root / "data" / "audits").exists()
+
+
+@pytest.mark.parametrize("argv", [
+    ["--run", "r1", "--split", "tune", "--conversations", "c.jsonl"],   # both
+    ["--run", "r1", "--conversations", "c.jsonl", "--split", "all"],
+    ["--run", "r1"],                                                    # neither
+])
+def test_run_needs_exactly_one_of_split_and_conversations(tmp_path, argv):
+    client = FakeClient([])
+    with pytest.raises(SystemExit) as err:
+        audit.main(argv, client=client, env_path=write_env(tmp_path), root=make_root(tmp_path))
+    assert err.value.code == 2 and client.calls == []
+
+
+def test_conversations_without_run_prints_usage(tmp_path, capsys):
+    assert audit.main(["--conversations", "c.jsonl"], client=FakeClient([]),
+                      env_path=write_env(tmp_path)) == 2
+    assert "usage" in capsys.readouterr().out.lower()
+
+
 # ------------------------------------------------------------------- label isolation
 
 def test_audit_module_never_names_label_or_sealed_files():
