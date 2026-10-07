@@ -36,7 +36,7 @@ def call(session, name, **args):
 
 
 def verified(**over):
-    session = AccountSession(make_account(**over), "sc-1")
+    session = AccountSession(make_account(**over), "sc-1", grounding=False)
     result = call(session, "verify_identity", full_name="Teresa Galloway",
                   service_address=ADDRESS, pin="4410")
     assert result["result"] == "verified_account_holder"
@@ -46,17 +46,17 @@ def verified(**over):
 # ---------------------------------------------------------------- verify_identity
 
 def test_verify_account_holder_with_pin_and_with_amount():
-    s = AccountSession(make_account(), "sc-1")
+    s = AccountSession(make_account(), "sc-1", grounding=False)
     assert call(s, "verify_identity", full_name="Teresa Galloway",
                 service_address=ADDRESS, pin="4410") == {
         "result": "verified_account_holder", "failed_attempts": 0}
-    s = AccountSession(make_account(), "sc-1")
+    s = AccountSession(make_account(), "sc-1", grounding=False)
     assert call(s, "verify_identity", full_name="Teresa Galloway",
                 service_address=ADDRESS, last_payment_amount=60)["result"] == "verified_account_holder"
 
 
 def test_verify_authorized_user_ignores_case_and_extra_spaces():
-    s = AccountSession(make_account(), "sc-1")
+    s = AccountSession(make_account(), "sc-1", grounding=False)
     result = call(s, "verify_identity", full_name="  lena   HOFFMAN ",
                   service_address=ADDRESS, pin="4410")
     assert result["result"] == "verified_authorized_user"
@@ -66,7 +66,7 @@ def test_verify_authorized_user_ignores_case_and_extra_spaces():
     "412 Juniper Ct", "412 juniper ct., apt 2, Flagstaff", "I live at 412-Juniper CT",
 ])
 def test_address_matches_street_part_in_letters_and_digits(address):
-    s = AccountSession(make_account(), "sc-1")
+    s = AccountSession(make_account(), "sc-1", grounding=False)
     assert call(s, "verify_identity", full_name="Teresa Galloway",
                 service_address=address, pin="4410")["result"] == "verified_account_holder"
 
@@ -79,13 +79,13 @@ def test_address_matches_street_part_in_letters_and_digits(address):
     {"full_name": "Someone Else", "service_address": ADDRESS, "pin": "4410"},
 ])
 def test_each_wrong_item_fails_and_counts_one_attempt(args):
-    s = AccountSession(make_account(), "sc-1")
+    s = AccountSession(make_account(), "sc-1", grounding=False)
     result = call(s, "verify_identity", **args)
     assert result == {"result": "not_verified", "failed_attempts": 1}
 
 
 def test_call_without_third_item_does_not_verify_or_count():
-    s = AccountSession(make_account(), "sc-1")
+    s = AccountSession(make_account(), "sc-1", grounding=False)
     result = call(s, "verify_identity", full_name="Teresa Galloway", service_address=ADDRESS)
     assert result == {"result": "not_verified", "failed_attempts": 0}
     assert call(s, "verify_identity", full_name="Teresa Galloway",
@@ -93,7 +93,7 @@ def test_call_without_third_item_does_not_verify_or_count():
 
 
 def test_locked_after_two_failed_attempts_even_with_correct_data():
-    s = AccountSession(make_account(), "sc-1")
+    s = AccountSession(make_account(), "sc-1", grounding=False)
     bad = dict(full_name="Teresa Galloway", service_address=ADDRESS, pin="0000")
     assert call(s, "verify_identity", **bad) == {"result": "not_verified", "failed_attempts": 1}
     assert call(s, "verify_identity", **bad) == {"result": "not_verified", "failed_attempts": 2}
@@ -109,7 +109,7 @@ def test_verified_session_stays_verified():
 
 
 def test_verify_never_returns_on_file_values():
-    s = AccountSession(make_account(), "sc-1")
+    s = AccountSession(make_account(), "sc-1", grounding=False)
     out = json.dumps(call(s, "verify_identity", full_name="Teresa Galloway",
                           service_address=ADDRESS, pin="1234"))
     assert "4410" not in out and "Juniper" not in out and "60" not in out
@@ -118,7 +118,7 @@ def test_verify_never_returns_on_file_values():
 # ---------------------------------------------------------------- get_account
 
 def test_get_account_needs_verification():
-    s = AccountSession(make_account(), "sc-1")
+    s = AccountSession(make_account(), "sc-1", grounding=False)
     assert call(s, "get_account") == {"error": "not_verified"}
 
 
@@ -138,7 +138,7 @@ def offer(session, name="discount_25_3mo", yes=True, **extra):
 
 
 def test_offer_requires_verification_and_yes():
-    s = AccountSession(make_account(), "sc-1")
+    s = AccountSession(make_account(), "sc-1", grounding=False)
     assert offer(s) == {"applied": False, "reason": "not_verified"}
     s = verified()
     assert offer(s, yes=False) == {"applied": False, "reason": "customer_has_not_said_yes"}
@@ -257,7 +257,7 @@ def test_payment_plan_success_sorts_by_date():
 
 
 def test_payment_plan_gates():
-    s = AccountSession(make_account(stage="Early", past_due_balance=120), "sc-1")
+    s = AccountSession(make_account(stage="Early", past_due_balance=120), "sc-1", grounding=False)
     assert plan(s, [{"date": "2026-10-06", "amount": 120}]) == {"set": False, "reason": "not_verified"}
     s = early()
     assert plan(s, [{"date": "2026-10-06", "amount": 120}], yes=False) == {
@@ -321,7 +321,7 @@ def test_cancel_service():
 
 
 def test_cancel_refusals_and_no_next_bill():
-    s = AccountSession(make_account(), "sc-1")
+    s = AccountSession(make_account(), "sc-1", grounding=False)
     assert call(s, "cancel_service", customer_said_yes=True) == {
         "cancelled": False, "reason": "not_verified"}
     s = verified()
@@ -339,15 +339,15 @@ def pay(session, name="Teresa Galloway", address=ADDRESS, amount=25):
 
 
 def test_take_payment_needs_no_verification_and_returns_no_balance():
-    s = AccountSession(make_account(past_due_balance=80), "sc-1")
+    s = AccountSession(make_account(past_due_balance=80), "sc-1", grounding=False)
     result = pay(s, "  teresa GALLOWAY ", "412 Juniper Ct")
     assert result["received"] is True and re.fullmatch(r"PM-\d{5}", result["confirmation_number"])
     assert set(result) == {"received", "confirmation_number"}
 
 
 def test_take_payment_code_is_derived_from_the_scenario_id():
-    a, b = AccountSession(make_account(), "sc-1"), AccountSession(make_account(), "sc-1")
-    other = AccountSession(make_account(), "sc-2")
+    a, b = AccountSession(make_account(), "sc-1", grounding=False), AccountSession(make_account(), "sc-1", grounding=False)
+    other = AccountSession(make_account(), "sc-2", grounding=False)
     first = pay(a)
     assert first == pay(b)
     assert first != pay(other)
@@ -360,12 +360,12 @@ def test_take_payment_code_is_derived_from_the_scenario_id():
     ("Teresa", ADDRESS),
 ])
 def test_take_payment_refuses_unidentified_accounts(name, address):
-    s = AccountSession(make_account(), "sc-1")
+    s = AccountSession(make_account(), "sc-1", grounding=False)
     assert pay(s, name, address) == {"received": False, "reason": "account_not_identified"}
 
 
 def test_take_payment_rejects_bad_amounts():
-    s = AccountSession(make_account(), "sc-1")
+    s = AccountSession(make_account(), "sc-1", grounding=False)
     assert pay(s, amount=0) == {"error": "invalid argument: amount"}
     assert pay(s, amount=-5) == {"error": "invalid argument: amount"}
     assert pay(s, amount="ten") == {"error": "invalid argument: amount"}
@@ -374,13 +374,13 @@ def test_take_payment_rejects_bad_amounts():
 # ---------------------------------------------------------------- escalate and end_contact
 
 def test_escalate():
-    s = AccountSession(make_account(), "sc-1")
+    s = AccountSession(make_account(), "sc-1", grounding=False)
     result = call(s, "escalate", team="tier2", reason="ES-2", summary="Duplicate charge on Sep 3.")
     assert re.fullmatch(r"TV-\d{5}", result["ticket"])
     assert result["team"] == "tier2" and result["reply"] == "by email within 2 business days"
     again = call(s, "escalate", team="recovery", reason="ES-1", summary="Over 90 days.")
     assert again["ticket"] != result["ticket"]
-    same = AccountSession(make_account(), "sc-1")
+    same = AccountSession(make_account(), "sc-1", grounding=False)
     assert call(same, "escalate", team="tier2", reason="ES-2", summary="x")["ticket"] == result["ticket"]
 
 
@@ -391,12 +391,12 @@ def test_escalate():
     {"team": "tier2", "reason": "ES-2"},
 ])
 def test_escalate_refuses_bad_input(args):
-    s = AccountSession(make_account(), "sc-1")
+    s = AccountSession(make_account(), "sc-1", grounding=False)
     assert "error" in call(s, "escalate", **args)
 
 
 def test_end_contact():
-    s = AccountSession(make_account(), "sc-1")
+    s = AccountSession(make_account(), "sc-1", grounding=False)
     assert not s.ended and s.end_status is None
     assert call(s, "end_contact", status="bogus") == {"error": "invalid argument: status"}
     assert not s.ended
@@ -419,14 +419,14 @@ def test_end_contact():
     ("take_payment", '{"account_holder_full_name": "a", "service_address": "b", "amount": 1e999}'),
 ])
 def test_bad_arguments_return_an_error_and_never_raise(name, raw):
-    s = AccountSession(make_account(), "sc-1")
+    s = AccountSession(make_account(), "sc-1", grounding=False)
     result = s.call(name, raw)
     assert list(result) == ["error"] and isinstance(result["error"], str)
     json.dumps(result)
 
 
 def test_error_text_never_echoes_values():
-    s = AccountSession(make_account(), "sc-1")
+    s = AccountSession(make_account(), "sc-1", grounding=False)
     result = s.call("verify_identity", '{"full_name": 5, "service_address": "SECRET-ADDRESS"}')
     assert "SECRET-ADDRESS" not in json.dumps(result)
 
@@ -435,14 +435,14 @@ def test_empty_arguments_and_null_optionals_are_accepted():
     s = verified()
     assert "plan" in s.call("get_account", "")
     assert "plan" in s.call("get_account", "   ")
-    s = AccountSession(make_account(), "sc-1")
+    s = AccountSession(make_account(), "sc-1", grounding=False)
     result = call(s, "verify_identity", full_name="Teresa Galloway", service_address=ADDRESS,
                   pin="4410", last_payment_amount=None)
     assert result["result"] == "verified_account_holder"
 
 
 def test_every_call_is_recorded_with_its_turn():
-    s = AccountSession(make_account(), "sc-1")
+    s = AccountSession(make_account(), "sc-1", grounding=False)
     s.turn = 3
     s.call("get_account", "{}")
     s.turn = 5
@@ -458,7 +458,7 @@ def test_tool_specs_match_the_handlers():
     names = [spec["function"]["name"] for spec in TOOL_SPECS]
     assert names == ["verify_identity", "get_account", "apply_offer", "set_payment_plan",
                      "cancel_service", "take_payment", "escalate", "end_contact"]
-    session = AccountSession(make_account(), "sc-1")
+    session = AccountSession(make_account(), "sc-1", grounding=False)
     assert set(names) == set(session._handlers)
     for spec in TOOL_SPECS:
         assert spec["type"] == "function"
@@ -471,3 +471,163 @@ def test_tools_module_never_names_label_or_sealed_files():
     source = Path(tools.__file__).read_text(encoding="utf-8")
     for name in ("labels_key", "second_reader", "scenarios.sealed", "sealed"):
         assert name not in source
+
+
+# ---------------------------------------------------------------- grounding
+
+SAID = "I'm teresa GALLOWAY, I live at 412 Juniper Ct. My PIN is 4410 and I paid $60.00 last time."
+
+
+def hearing(*texts, **over):
+    s = AccountSession(make_account(**over), "sc-1")
+    for text in texts:
+        s.hear(text)
+    return s
+
+
+def test_ungrounded_accepts_what_the_customer_said():
+    assert tools.ungrounded("verify_identity", {
+        "full_name": "Teresa Galloway", "service_address": ADDRESS, "pin": "4410",
+        "last_payment_amount": 60}, [SAID]) == []
+    assert tools.ungrounded("take_payment", {
+        "account_holder_full_name": "Teresa Galloway", "service_address": ADDRESS,
+        "amount": 60}, [SAID]) == []
+
+
+def test_ungrounded_names_and_pins_compare_lowercase_alphanumerics_across_turns():
+    said = ["Hi, teresa", "GALLOWAY here. pin: 44-10"]
+    assert tools.ungrounded("verify_identity", {
+        "full_name": "Teresa  Galloway", "service_address": "412 Juniper Ct",
+        "pin": "4410"}, said + ["412 juniper ct"]) == []
+    assert tools.ungrounded("verify_identity", {
+        "full_name": "Lena Hoffman", "service_address": "412 Juniper Ct",
+        "pin": "9999"}, said + ["412 juniper ct"]) == ["full_name", "pin"]
+
+
+def test_ungrounded_address_uses_the_part_before_the_first_comma():
+    args = {"full_name": "Teresa Galloway", "service_address": ADDRESS}
+    assert tools.ungrounded("verify_identity", args, ["Teresa Galloway, 412 juniper ct"]) == []
+    assert tools.ungrounded("verify_identity", args,
+                            ["Teresa Galloway, Flagstaff, AZ 86001"]) == ["service_address"]
+
+
+@pytest.mark.parametrize("said,amount,ok", [
+    ("It was $60", 60, True), ("it was 60.00", 60, True), ("about 1,200 dollars", 1200, True),
+    ("it was 60.00", 60.004, True), ("it was 60.00", 60.5, False),
+    ("sixty dollars", 60, False), ("it was $600", 60, False), ("", 60, False),
+])
+def test_ungrounded_amounts_must_be_numbers_written_with_digits(said, amount, ok):
+    args = {"account_holder_full_name": "Teresa Galloway", "service_address": ADDRESS,
+            "amount": amount}
+    heard = ["Teresa Galloway 412 Juniper Ct " + said]
+    assert (tools.ungrounded("take_payment", args, heard) == []) is ok
+
+
+def test_ungrounded_empty_missing_and_odd_values():
+    assert tools.ungrounded("verify_identity", {"full_name": "", "service_address": "  ",
+                                                "pin": ""}, [SAID]) == [
+        "full_name", "service_address", "pin"]
+    assert tools.ungrounded("take_payment", {}, [SAID]) == [
+        "account_holder_full_name", "service_address", "amount"]
+    assert tools.ungrounded("take_payment", {"amount": True, "account_holder_full_name": 5,
+                                             "service_address": None}, [SAID]) == [
+        "account_holder_full_name", "service_address", "amount"]
+    assert tools.ungrounded("verify_identity", {"full_name": "Teresa Galloway",
+                                                "service_address": ADDRESS,
+                                                "pin": None}, [SAID]) == []   # null = not given
+    assert tools.ungrounded("verify_identity", [1], [SAID]) == ["arguments"]
+    assert tools.ungrounded("get_account", {"x": 1}, []) == []
+
+
+def test_verify_with_values_the_customer_never_said_is_not_checked_and_not_counted():
+    s = hearing("I want to cancel.")
+    result = call(s, "verify_identity", full_name="Teresa Galloway", service_address=ADDRESS,
+                  pin="4410")
+    assert result == {"result": "not_checked", "reason": "not_said_by_customer",
+                      "missing": ["full_name", "service_address", "pin"], "failed_attempts": 0}
+    assert s.failed_attempts == 0 and s.verified_as is None
+    assert s.calls[-1]["result"] == result and s.calls[-1]["arguments"]["pin"] == "4410"
+    assert "4410" not in json.dumps(result)
+
+
+def test_verify_checks_the_grounding_before_argument_validation():
+    s = hearing()
+    assert call(s, "verify_identity") == {
+        "result": "not_checked", "reason": "not_said_by_customer",
+        "missing": ["full_name", "service_address"], "failed_attempts": 0}
+    assert call(s, "verify_identity", full_name="", service_address="", pin="")["missing"] == [
+        "full_name", "service_address", "pin"]
+    assert call(s, "take_payment") == {
+        "received": False, "reason": "not_said_by_customer",
+        "missing": ["account_holder_full_name", "service_address", "amount"]}
+    # grounded values go on to validation as before
+    s = hearing(SAID)
+    assert call(s, "verify_identity", full_name="Teresa Galloway", service_address=ADDRESS,
+                color="red") == {"error": "unknown argument: color"}
+
+
+def test_verify_without_grounding_behaves_as_before():
+    s = AccountSession(make_account(), "sc-1", grounding=False)
+    assert call(s, "verify_identity") == {"error": "missing argument: full_name"}
+    assert call(s, "verify_identity", full_name="Teresa Galloway", service_address=ADDRESS,
+                pin="4410")["result"] == "verified_account_holder"
+    s = AccountSession(make_account(), "sc-1", grounding=False)
+    assert call(s, "take_payment", account_holder_full_name="Teresa Galloway",
+                service_address=ADDRESS, amount=12)["received"] is True
+
+
+def test_grounded_wrong_answers_still_count_and_lock_after_two():
+    s = hearing("Teresa Galloway, 412 Juniper Ct, pin 1111, then pin 2222, then pin 4410")
+    args = dict(full_name="Teresa Galloway", service_address=ADDRESS)
+    assert call(s, "verify_identity", pin="1111", **args) == {
+        "result": "not_verified", "failed_attempts": 1}
+    assert call(s, "verify_identity", pin="2222", **args) == {
+        "result": "not_verified", "failed_attempts": 2}
+    assert call(s, "verify_identity", pin="4410", **args) == {
+        "result": "locked", "failed_attempts": 2}
+
+
+def test_a_refused_call_between_wrong_answers_does_not_count():
+    s = hearing("Teresa Galloway, 412 Juniper Ct, pin 1111")
+    args = dict(full_name="Teresa Galloway", service_address=ADDRESS)
+    call(s, "verify_identity", pin="1111", **args)
+    assert call(s, "verify_identity", pin="5555", **args)["failed_attempts"] == 1
+    assert s.failed_attempts == 1 and not s.locked
+
+
+def test_grounding_uses_what_is_heard_up_to_now():
+    s = hearing("Teresa Galloway at 412 Juniper Ct")
+    args = dict(full_name="Teresa Galloway", service_address=ADDRESS, pin="4410")
+    assert call(s, "verify_identity", **args)["missing"] == ["pin"]
+    s.hear("my pin is 4410")
+    assert call(s, "verify_identity", **args)["result"] == "verified_account_holder"
+
+
+def test_take_payment_with_an_amount_the_customer_did_not_say_is_refused():
+    s = hearing("I'm Teresa Galloway at 412 Juniper Ct and I want to pay $25, not $0")
+    args = dict(account_holder_full_name="Teresa Galloway", service_address=ADDRESS)
+    assert call(s, "take_payment", amount=40, **args) == {
+        "received": False, "reason": "not_said_by_customer", "missing": ["amount"]}
+    assert call(s, "take_payment", amount=25, **args)["received"] is True
+    assert call(s, "take_payment", amount=-25, **args)["missing"] == ["amount"]   # no sign in speech
+    assert call(s, "take_payment", amount=0, **args) == {"error": "invalid argument: amount"}
+
+
+def test_take_payment_for_another_account_is_still_not_identified_when_grounded():
+    s = hearing("Lena Hoffman at 412 Juniper Ct pays $10")
+    assert call(s, "take_payment", account_holder_full_name="Lena Hoffman",
+                service_address=ADDRESS, amount=10) == {
+        "received": False, "reason": "account_not_identified"}
+
+
+def test_log_blocked_records_the_call_without_running_it():
+    s = hearing()
+    s.turn = 3
+    s.log_blocked("end_contact", json.dumps({"status": "resolved"}), "asked_a_question")
+    s.log_blocked("get_account", "not json", "asked_a_question")
+    assert s.calls == [
+        {"after_turn": 3, "name": "end_contact", "arguments": {"status": "resolved"},
+         "result": {"blocked": "asked_a_question"}},
+        {"after_turn": 3, "name": "get_account", "arguments": "not json",
+         "result": {"blocked": "asked_a_question"}}]
+    assert not s.ended

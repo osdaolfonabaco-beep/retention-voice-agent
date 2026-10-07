@@ -25,6 +25,7 @@ from retention.tools import TOOL_SPECS, AccountSession
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_SCENARIOS = Path("data") / "agent" / "scenarios.jsonl"
+DEFAULT_AGENT_PROMPT = "prompts/agent_system.md"
 DEFAULT_MAX_CALLS = 2000
 MAX_TOOL_ROUNDS = 6         # rounds of tool execution in one agent turn
 MAX_TURNS = 40              # recorded turns (agent and customer together)
@@ -42,7 +43,8 @@ MISMATCH = ("run {run} was started with different models, prompts, policy or sce
 def agent_turn(client, model: str, system_prompt: str, messages: list[dict],
                session: AccountSession,
                reasoning_effort: str | None = AGENT_REASONING_EFFORT,
-               allow_tools: bool = True) -> tuple[str, list[dict], dict]:
+               allow_tools: bool = True, guards: bool = True
+               ) -> tuple[str, list[dict], dict]:
     """One agent turn. `messages` is the conversation without the system prompt.
 
     Calls the model, runs any tool calls through `session.call`, feeds the results
@@ -50,6 +52,10 @@ def agent_turn(client, model: str, system_prompt: str, messages: list[dict],
     model is called once more without tools so that it ends with text. Returns
     (agent text for this turn, the extended messages, summed usage). With
     `allow_tools=False` the model is called once, without tools, and no tool runs.
+
+    With `guards`, a message that has tool calls and text with a "?" ends the turn
+    with that text: its calls are logged as blocked, not run, and not stored in the
+    messages. (The grounding guard lives in the session.)
     """
     messages = list(messages)
     system = {"role": "system", "content": system_prompt}
@@ -67,6 +73,11 @@ def agent_turn(client, model: str, system_prompt: str, messages: list[dict],
         calls = message["tool_calls"] if tools else []
         if not calls:
             messages.append({"role": "assistant", "content": content})
+            break
+        if guards and "?" in content:
+            messages.append({"role": "assistant", "content": content})
+            for call in calls:
+                session.log_blocked(call["name"], call["arguments"], "asked_a_question")
             break
         messages.append({
             "role": "assistant", "content": content or None,
@@ -184,10 +195,10 @@ def build_customer_prompt(template: str, scenario: dict) -> str:
 
 
 def play_scenario(scenario: dict, agent_client, customer_client, agent_model: str,
-                  customer_model: str, agent_system: str, customer_system: str
-                  ) -> tuple[list[dict], AccountSession, str]:
+                  customer_model: str, agent_system: str, customer_system: str,
+                  guards: bool = True) -> tuple[list[dict], AccountSession, str]:
     """Play one contact. Returns (turns, session, stop_reason)."""
-    session = AccountSession(scenario["account"], scenario["id"])
+    session = AccountSession(scenario["account"], scenario["id"], grounding=guards)
     agent_messages = [{"role": "user", "content": START_MESSAGE}]   # not recorded
     customer_messages = [{"role": "system", "content": customer_system}]
     turns: list[dict] = []
@@ -196,7 +207,7 @@ def play_scenario(scenario: dict, agent_client, customer_client, agent_model: st
         session.turn = len(turns)
         text, agent_messages, _ = agent_turn(
             agent_client, agent_model, agent_system, agent_messages, session,
-            allow_tools=not opening)
+            allow_tools=not opening, guards=guards)
         opening = False
         if text:
             turns.append({"speaker": "agent", "text": text})
@@ -215,6 +226,7 @@ def play_scenario(scenario: dict, agent_client, customer_client, agent_model: st
             raise _ScenarioFailed("the customer said nothing")
         customer_messages.append({"role": "assistant", "content": reply})
         turns.append({"speaker": "customer", "text": reply})
+        session.hear(reply)
         agent_messages.append({"role": "user", "content": reply})
         if len(turns) >= MAX_TURNS:
             return turns, session, "max_turns"
@@ -266,7 +278,7 @@ def check_run_meta(run_path: Path, current: dict) -> bool:
 
 def run_scenarios(pending, client, agent_model, customer_model, agent_template,
                   customer_template, policy, out_dir: Path, max_calls: int,
-                  sleep=time.sleep, now=_utc_now, say=print) -> _Stats:
+                  sleep=time.sleep, now=_utc_now, say=print, guards: bool = True) -> _Stats:
     out_dir.mkdir(parents=True, exist_ok=True)
     stats = _Stats()
     streak = 0
@@ -286,7 +298,7 @@ def run_scenarios(pending, client, agent_model, customer_model, agent_template,
                     turns, session, stop_reason = play_scenario(
                         scenario, agent_client, customer_client, agent_model, customer_model,
                         build_agent_prompt(agent_template, policy, scenario),
-                        build_customer_prompt(customer_template, scenario))
+                        build_customer_prompt(customer_template, scenario), guards)
                 except _BudgetExhausted:
                     status, stats.out_of_budget = "skipped", True
                 except _ScenarioFailed as exc:
@@ -326,7 +338,8 @@ def print_summary(stats: _Stats, max_calls: int, say=print) -> None:
 
 def run_mode(args, client, models: tuple[str, str], root: Path, sleep, now, say=print) -> int:
     agent_model, customer_model = models
-    agent_template = _require(root / "prompts" / "agent_system.md").read_text(encoding="utf-8")
+    guards = not args.no_guards
+    agent_template = _require(root / args.agent_prompt).read_text(encoding="utf-8")
     customer_template = _require(root / "prompts" / "customer_simulator.md").read_text(
         encoding="utf-8")
     policy = _require(root / "docs" / "policy.md").read_text(encoding="utf-8")
@@ -335,6 +348,7 @@ def run_mode(args, client, models: tuple[str, str], root: Path, sleep, now, say=
 
     out_dir = root / "data" / "agent_runs" / args.run
     meta = {"run": args.run, "agent_model": agent_model, "customer_model": customer_model,
+            "agent_prompt": args.agent_prompt, "guards": guards,
             "agent_prompt_sha256": _sha256(agent_template),
             "customer_prompt_sha256": _sha256(customer_template),
             "policy_sha256": _sha256(policy), "scenarios_sha256": scenarios_sha,
@@ -357,7 +371,8 @@ def run_mode(args, client, models: tuple[str, str], root: Path, sleep, now, say=
     if not meta_exists:
         write_run_meta(out_dir / "run.json", meta)
     stats = run_scenarios(pending, client(), agent_model, customer_model, agent_template,
-                          customer_template, policy, out_dir, args.max_calls, sleep, now, say)
+                          customer_template, policy, out_dir, args.max_calls, sleep, now, say,
+                          guards)
     print_summary(stats, args.max_calls, say)
     return 1 if stats.stopped else 0
 
@@ -373,6 +388,10 @@ def _parse_args(argv):
     p.add_argument("--limit", type=int, metavar="N", help="play at most N pending scenarios")
     p.add_argument("--max-calls", type=int, metavar="N", default=DEFAULT_MAX_CALLS,
                    help=f"model call budget (default {DEFAULT_MAX_CALLS})")
+    p.add_argument("--agent-prompt", metavar="PATH", default=DEFAULT_AGENT_PROMPT,
+                   help=f"agent prompt file (default {DEFAULT_AGENT_PROMPT})")
+    p.add_argument("--no-guards", action="store_true",
+                   help="turn off the ask-then-wait and grounding guards")
     p.add_argument("--dry-run", action="store_true", help="show counts, call nothing")
     args = p.parse_args(argv)
     if not RUN_NAME.fullmatch(args.run):

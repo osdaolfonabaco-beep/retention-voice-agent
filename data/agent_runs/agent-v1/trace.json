@@ -1,0 +1,443 @@
+{
+  "run": "agent-v1",
+  "contacts": [
+    {
+      "id": "ag-01",
+      "violations": []
+    },
+    {
+      "id": "ag-02",
+      "violations": [
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address"
+          ]
+        },
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address"
+          ]
+        },
+        {
+          "type": "ended_on_question",
+          "tool": "end_contact",
+          "after_turn": 2
+        }
+      ]
+    },
+    {
+      "id": "ag-03",
+      "violations": []
+    },
+    {
+      "id": "ag-04",
+      "violations": [
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address"
+          ]
+        },
+        {
+          "type": "ended_on_question",
+          "tool": "end_contact",
+          "after_turn": 2
+        }
+      ]
+    },
+    {
+      "id": "ag-05",
+      "violations": []
+    },
+    {
+      "id": "ag-06",
+      "violations": [
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address"
+          ]
+        },
+        {
+          "type": "ended_on_question",
+          "tool": "end_contact",
+          "after_turn": 2
+        }
+      ]
+    },
+    {
+      "id": "ag-07",
+      "violations": []
+    },
+    {
+      "id": "ag-08",
+      "violations": [
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ag-09",
+      "violations": [
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address"
+          ]
+        },
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address",
+            "pin"
+          ]
+        },
+        {
+          "type": "ended_on_question",
+          "tool": "end_contact",
+          "after_turn": 8
+        }
+      ]
+    },
+    {
+      "id": "ag-10",
+      "violations": []
+    },
+    {
+      "id": "ag-11",
+      "violations": [
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address"
+          ]
+        },
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address",
+            "pin"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ag-12",
+      "violations": [
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address",
+            "pin"
+          ]
+        },
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address",
+            "pin"
+          ]
+        },
+        {
+          "type": "ended_on_question",
+          "tool": "end_contact",
+          "after_turn": 2
+        }
+      ]
+    },
+    {
+      "id": "ag-13",
+      "violations": []
+    },
+    {
+      "id": "ag-14",
+      "violations": [
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address",
+            "pin"
+          ]
+        },
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address",
+            "last_payment_amount"
+          ]
+        },
+        {
+          "type": "ended_on_question",
+          "tool": "end_contact",
+          "after_turn": 2
+        }
+      ]
+    },
+    {
+      "id": "ag-15",
+      "violations": [
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address",
+            "pin"
+          ]
+        },
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address",
+            "pin"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ag-16",
+      "violations": [
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address"
+          ]
+        },
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address",
+            "pin"
+          ]
+        },
+        {
+          "type": "ended_on_question",
+          "tool": "end_contact",
+          "after_turn": 4
+        }
+      ]
+    },
+    {
+      "id": "ag-17",
+      "violations": [
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address",
+            "pin"
+          ]
+        },
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address",
+            "pin"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ag-18",
+      "violations": [
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address",
+            "pin"
+          ]
+        },
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address",
+            "pin"
+          ]
+        },
+        {
+          "type": "ended_on_question",
+          "tool": "end_contact",
+          "after_turn": 2
+        }
+      ]
+    },
+    {
+      "id": "ag-19",
+      "violations": [
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ag-20",
+      "violations": []
+    },
+    {
+      "id": "ag-21",
+      "violations": [
+        {
+          "type": "ungrounded_call",
+          "tool": "take_payment",
+          "after_turn": 2,
+          "params": [
+            "amount"
+          ]
+        },
+        {
+          "type": "ungrounded_call",
+          "tool": "take_payment",
+          "after_turn": 2,
+          "params": [
+            "amount"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ag-22",
+      "violations": [
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "pin"
+          ]
+        },
+        {
+          "type": "ended_on_question",
+          "tool": "end_contact",
+          "after_turn": 2
+        }
+      ]
+    },
+    {
+      "id": "ag-23",
+      "violations": []
+    },
+    {
+      "id": "ag-24",
+      "violations": [
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address",
+            "pin"
+          ]
+        },
+        {
+          "type": "ungrounded_call",
+          "tool": "verify_identity",
+          "after_turn": 2,
+          "params": [
+            "full_name",
+            "service_address",
+            "pin"
+          ]
+        },
+        {
+          "type": "ended_on_question",
+          "tool": "end_contact",
+          "after_turn": 2
+        }
+      ]
+    }
+  ],
+  "totals": {
+    "contacts": 24,
+    "ungrounded_call": 16,
+    "ended_on_question": 10,
+    "no_violation": 8,
+    "blocked": {
+      "asked_a_question": 0,
+      "not_said_by_customer": 0
+    }
+  },
+  "audit": {
+    "run": "agent-v1-audit",
+    "clean_both": {
+      "ids": [
+        "ag-01",
+        "ag-07"
+      ],
+      "count": 2,
+      "pct": 8.3
+    }
+  }
+}

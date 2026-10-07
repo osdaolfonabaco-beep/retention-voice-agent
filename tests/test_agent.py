@@ -18,6 +18,7 @@ MISMATCH = ("run r1 was started with different models, prompts, policy or scenar
 POLICY = "POLICY-BODY {channel} {today}\n"
 AGENT_TEMPLATE = ("AGENT {channel} {today} {agent_name}\n<policy>\n{policy}\n</policy>\n")
 CUSTOMER_TEMPLATE = "CUSTOMER {channel}\nBrief: {brief}\n"
+CALLER_ID = "I want to cancel. I am Teresa Galloway at 412 Juniper Ct, last payment $60."
 
 
 # ---------------------------------------------------------------- fakes and builders
@@ -152,6 +153,7 @@ def test_agent_turn_runs_tools_and_feeds_results_back():
         say("You are verified."),
     ])
     session = AccountSession(make_account(), "ag-01")
+    session.hear("I am Teresa Galloway at 412 Juniper Ct, and my last payment was $60.")
     text, messages, usage = agent.agent_turn(
         client, "m", "SYSTEM", [{"role": "user", "content": "I am Teresa"}], session)
     assert text == "One moment. You are verified."
@@ -262,13 +264,13 @@ def test_full_contact_with_tools(tmp_path, capsys):
          say("Thanks, you are verified. Do you want to cancel?"),
          use("end_contact", {"status": "no_change"}, text="Goodbye!"),
          say("")],
-        ["I want to cancel.", "Yes."])
+        [CALLER_ID, "Yes."])
     assert run.go(client) == 0
 
     [conv] = run.rows("conversations.jsonl")
     assert conv == {"id": "ag-01", "channel": "phone", "account": make_account(), "turns": [
         {"speaker": "agent", "text": "Hello, Marisa here."},
-        {"speaker": "customer", "text": "I want to cancel."},
+        {"speaker": "customer", "text": CALLER_ID},
         {"speaker": "agent", "text": "Thanks, you are verified. Do you want to cancel?"},
         {"speaker": "customer", "text": "Yes."},
         {"speaker": "agent", "text": "Goodbye!"}]}
@@ -291,11 +293,11 @@ def test_full_contact_with_tools(tmp_path, capsys):
         {"role": "user", "content": "Hello, Marisa here."}]
     assert customer[1]["messages"][1:] == [
         {"role": "user", "content": "Hello, Marisa here."},
-        {"role": "assistant", "content": "I want to cancel."},
+        {"role": "assistant", "content": CALLER_ID},
         {"role": "user", "content": "Thanks, you are verified. Do you want to cancel?"}]
     # the agent sees customer turns as user messages
     assert client.agent_calls[1]["messages"][-1] == {
-        "role": "user", "content": "I want to cancel."}
+        "role": "user", "content": CALLER_ID}
 
     log = run.rows("log.jsonl")
     assert [r["role"] for r in log] == ["agent", "customer", "agent", "agent", "customer",
@@ -422,9 +424,10 @@ def test_run_json_has_models_and_hashes(tmp_path):
     run = Run(tmp_path, ids=("ag-01",))
     run.go(quick())
     meta = json.loads((run.out_dir / "run.json").read_text(encoding="utf-8"))
-    assert set(meta) == {"run", "agent_model", "customer_model", "agent_prompt_sha256",
-                         "customer_prompt_sha256", "policy_sha256", "scenarios_sha256",
-                         "agent_reasoning_effort", "created"}
+    assert set(meta) == {"run", "agent_model", "customer_model", "agent_prompt",
+                         "agent_prompt_sha256", "customer_prompt_sha256", "policy_sha256",
+                         "scenarios_sha256", "agent_reasoning_effort", "guards", "created"}
+    assert meta["guards"] is True and meta["agent_prompt"] == "prompts/agent_system.md"
     assert meta["agent_reasoning_effort"] == "none"
     assert meta["run"] == "r1" and meta["agent_model"] == "agent-m"
     assert meta["customer_model"] == "cust-m" and meta["created"] == NOW
@@ -663,6 +666,167 @@ def test_agent_module_never_names_label_or_sealed_files():
     source = Path(agent.__file__).read_text(encoding="utf-8")
     for name in ("labels_key", "second_reader", "scenarios.sealed", "sealed", '"expected"'):
         assert name not in source
+
+
+# ---------------------------------------------------------------- guards
+
+VERIFY = {"full_name": "Teresa Galloway", "service_address": ADDRESS, "last_payment_amount": 60}
+BLOCKED = {"blocked": "asked_a_question"}
+
+
+def test_a_question_next_to_tool_calls_ends_the_turn_and_discards_the_calls():
+    message = {"content": "Is that everything?", "tool_calls": [
+        {"id": "a", "name": "end_contact", "arguments": json.dumps({"status": "resolved"})},
+        {"id": "b", "name": "get_account", "arguments": "{}"}]}
+    client = FakeClient([message])          # a second model call would fail: the script is empty
+    session = AccountSession(make_account(), "ag-01")
+    session.turn = 6
+    text, messages, usage = agent.agent_turn(client, "m", "S", [], session)
+    assert text == "Is that everything?"
+    assert messages == [{"role": "assistant", "content": "Is that everything?"}]
+    assert "tool_calls" not in messages[0] and len(client.agent_calls) == 1
+    assert usage == USAGE and not session.ended
+    assert session.calls == [
+        {"after_turn": 6, "name": "end_contact", "arguments": {"status": "resolved"},
+         "result": BLOCKED},
+        {"after_turn": 6, "name": "get_account", "arguments": {}, "result": BLOCKED}]
+
+
+def test_a_question_mark_in_a_later_round_keeps_the_earlier_text_and_results():
+    client = FakeClient([
+        use("get_account", {}, text="One moment.", call_id="c1"),
+        use("end_contact", {"status": "resolved"}, text="Anything else?", call_id="c2")])
+    session = AccountSession(make_account(), "ag-01")
+    session.hear("Teresa Galloway, 412 Juniper Ct, $60")
+    text, messages, _ = agent.agent_turn(client, "m", "S", [], session)
+    assert text == "One moment. Anything else?"
+    assert [m["role"] for m in messages] == ["assistant", "tool", "assistant"]
+    assert messages[-1] == {"role": "assistant", "content": "Anything else?"}
+    assert [c["result"] == BLOCKED for c in session.calls] == [False, True]
+    assert not session.ended
+
+
+def test_tool_calls_with_text_without_a_question_mark_run():
+    client = FakeClient([use("end_contact", {"status": "resolved"}, text="Goodbye."), say("")])
+    session = AccountSession(make_account(), "ag-01")
+    text, messages, _ = agent.agent_turn(client, "m", "S", [], session)
+    assert text == "Goodbye." and session.ended
+    assert messages[0]["tool_calls"][0]["function"]["name"] == "end_contact"
+    assert session.calls[0]["result"] == {"ended": True, "status": "resolved"}
+
+
+def test_with_guards_off_a_question_next_to_tool_calls_runs_as_before():
+    client = FakeClient([use("end_contact", {"status": "resolved"}, text="Anything else?"),
+                         say("")])
+    session = AccountSession(make_account(), "ag-01", grounding=False)
+    text, messages, _ = agent.agent_turn(client, "m", "S", [], session, guards=False)
+    assert text == "Anything else?" and session.ended and len(client.agent_calls) == 2
+    assert messages[0]["tool_calls"] and session.calls[0]["result"]["ended"] is True
+
+
+def test_guards_are_on_by_default_in_agent_turn():
+    client = FakeClient([use("end_contact", {"status": "resolved"}, text="Done?")])
+    session = AccountSession(make_account(), "ag-01")
+    agent.agent_turn(client, "m", "S", [], session)
+    assert not session.ended and session.calls[0]["result"] == BLOCKED
+
+
+def test_guarded_contact_blocks_ungrounded_values_and_questions_with_calls(tmp_path):
+    run = Run(tmp_path, ids=("ag-01",))
+    client = FakeClient(
+        [say("Hello, Marisa here."),
+         use("verify_identity", VERIFY, call_id="v1"),                  # the customer said nothing yet
+         say("Could you tell me your full name and address?"),
+         use("verify_identity", VERIFY, call_id="v2"),
+         use("end_contact", {"status": "resolved"}, text="Is that all?", call_id="e1"),
+         use("end_contact", {"status": "resolved"}, text="Goodbye!", call_id="e2"),
+         say("")],
+        ["I want to cancel.", CALLER_ID, "Yes."])
+    assert run.go(client) == 0
+    [conv] = run.rows("conversations.jsonl")
+    assert [t["text"] for t in conv["turns"]] == [
+        "Hello, Marisa here.", "I want to cancel.",
+        "Could you tell me your full name and address?", CALLER_ID, "Is that all?", "Yes.",
+        "Goodbye!"]
+    [calls] = run.rows("tool_calls.jsonl")
+    assert calls["stop_reason"] == "end_contact" and calls["end_status"] == "resolved"
+    assert [(c["after_turn"], c["name"], c["result"]) for c in calls["calls"]] == [
+        (2, "verify_identity", {"result": "not_checked", "reason": "not_said_by_customer",
+                                "missing": ["full_name", "service_address", "last_payment_amount"],
+                                "failed_attempts": 0}),
+        (4, "verify_identity", {"result": "verified_account_holder", "failed_attempts": 0}),
+        (4, "end_contact", BLOCKED),
+        (6, "end_contact", {"ended": True, "status": "resolved"})]
+    # the blocked end_contact never reached the model as a message
+    last_turn_messages = client.agent_calls[-2]["messages"]
+    assert not any(m.get("tool_calls") and m["tool_calls"][0]["id"] == "e1"
+                   for m in last_turn_messages)
+    assert {"role": "assistant", "content": "Is that all?"} in last_turn_messages
+
+
+def test_no_guards_reproduces_the_old_behaviour(tmp_path):
+    run = Run(tmp_path, ids=("ag-01",))
+    client = FakeClient(
+        [say("Hello, Marisa here."),
+         use("verify_identity", VERIFY, call_id="v1"),
+         use("end_contact", {"status": "no_change"}, text="Is that all?", call_id="e1"),
+         say("")],
+        ["I want to cancel."])
+    assert run.go(client, "--no-guards") == 0
+    [calls] = run.rows("tool_calls.jsonl")
+    assert calls["stop_reason"] == "end_contact" and calls["end_status"] == "no_change"
+    assert [(c["after_turn"], c["name"], c["result"]) for c in calls["calls"]] == [
+        (2, "verify_identity", {"result": "verified_account_holder", "failed_attempts": 0}),
+        (2, "end_contact", {"ended": True, "status": "no_change"})]
+    [conv] = run.rows("conversations.jsonl")
+    assert conv["turns"][-1] == {"speaker": "agent", "text": "Is that all?"}
+    meta = json.loads((run.out_dir / "run.json").read_text(encoding="utf-8"))
+    assert meta["guards"] is False
+
+
+def test_run_json_records_guards_and_the_agent_prompt_as_given(tmp_path):
+    run = Run(tmp_path, ids=("ag-01",))
+    (run.root / "prompts" / "alt.md").write_text("ALT {channel} {today} {agent_name} {policy}",
+                                                 encoding="utf-8")
+    client = quick()
+    run.go(client, "--agent-prompt", "prompts/alt.md")
+    meta = json.loads((run.out_dir / "run.json").read_text(encoding="utf-8"))
+    assert meta["agent_prompt"] == "prompts/alt.md" and meta["guards"] is True
+    assert client.agent_calls[0]["messages"][0]["content"].startswith("ALT phone 2026-10-05 Marisa")
+
+
+def test_missing_agent_prompt_file_exits(tmp_path):
+    run = Run(tmp_path, ids=("ag-01",))
+    with pytest.raises(SystemExit) as err:
+        run.go(quick(), "--agent-prompt", "prompts/nope.md")
+    assert "required file not found" in str(err.value)
+
+
+@pytest.mark.parametrize("first,second", [
+    ((), ("--no-guards",)),
+    (("--no-guards",), ()),
+    ((), ("--agent-prompt", "prompts/same.md")),     # same content, another path as given
+])
+def test_run_json_mismatch_covers_guards_and_the_agent_prompt(tmp_path, first, second):
+    run = Run(tmp_path, ids=("ag-01", "ag-02"))
+    (run.root / "prompts" / "same.md").write_text(AGENT_TEMPLATE, encoding="utf-8")
+    run.go(quick(), "--limit", "1", *first)
+    client = quick()
+    with pytest.raises(SystemExit) as err:
+        run.go(client, *second)
+    assert str(err.value) == MISMATCH and client.agent_calls == []
+
+
+def test_a_run_json_from_before_the_guards_is_refused(tmp_path):
+    run = Run(tmp_path, ids=("ag-01", "ag-02"))
+    run.go(quick(), "--limit", "1")
+    path = run.out_dir / "run.json"
+    meta = json.loads(path.read_text(encoding="utf-8"))
+    del meta["guards"], meta["agent_prompt"]
+    path.write_text(json.dumps(meta), encoding="utf-8")
+    with pytest.raises(SystemExit) as err:
+        run.go(quick())
+    assert str(err.value) == MISMATCH
 
 
 # ---------------------------------------------------------------- load_agent_settings

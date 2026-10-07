@@ -145,6 +145,55 @@ def _alnum(text: str) -> str:
     return re.sub(r"[^a-z0-9]", "", text.lower())
 
 
+_NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?")
+# tool -> (parameter, kind, required), in the order "missing" lists them
+_GROUNDED = {
+    "verify_identity": (("full_name", "text", True), ("service_address", "address", True),
+                        ("last_payment_amount", "amount", False), ("pin", "text", False)),
+    "take_payment": (("account_holder_full_name", "text", True),
+                     ("service_address", "address", True), ("amount", "amount", True)),
+}
+
+
+def _numbers(text: str) -> list[float]:
+    return [float(m.replace(",", "")) for m in _NUMBER.findall(text)]
+
+
+def ungrounded(tool: str, args, said: list[str]) -> list[str]:
+    """Parameters of a verify_identity or take_payment call that the customer did not say.
+
+    `said` holds the customer's texts so far in the contact. Names, PINs and the
+    street part of an address count when their lowercase alphanumerics are a
+    substring of everything said; an amount counts when it is among the numbers
+    written with digits. A required value that is missing or empty is ungrounded;
+    an optional one (pin, last_payment_amount) only counts when it was given.
+    Any other tool gives []; arguments that are not a JSON object give ["arguments"].
+    """
+    rules = _GROUNDED.get(tool)
+    if rules is None:
+        return []
+    if not isinstance(args, dict):
+        return ["arguments"]
+    joined = "\n".join(said)
+    flat, numbers = _alnum(joined), _numbers(joined)
+    missing = []
+    for param, kind, required in rules:
+        value = args.get(param)
+        if value is None and not required:
+            continue
+        if kind == "amount":
+            ok = (isinstance(value, (int, float)) and not isinstance(value, bool)
+                  and math.isfinite(value) and any(abs(n - value) < _CENT for n in numbers))
+        else:
+            ok = isinstance(value, str)
+            if ok:
+                key = _alnum(value.split(",")[0] if kind == "address" else value)
+                ok = bool(key) and key in flat
+        if not ok:
+            missing.append(param)
+    return missing
+
+
 def _add_months(day: date, months: int) -> date:
     index = day.year * 12 + day.month - 1 + months
     year, month = divmod(index, 12)
@@ -170,9 +219,11 @@ def _money(value: float) -> float:
 class AccountSession:
     """State of one contact over one account (tools never change the account itself)."""
 
-    def __init__(self, account: dict, scenario_id: str):
+    def __init__(self, account: dict, scenario_id: str, grounding: bool = True):
         self.account = account
         self.scenario_id = scenario_id
+        self.grounding = grounding         # refuse identity and payment values the customer never said
+        self._said: list[str] = []         # customer turns so far, see `hear`
         self.calls: list[dict] = []
         self.turn = 0                       # set by the runner: turns recorded so far
         self.ended = False
@@ -199,6 +250,19 @@ class AccountSession:
 
     # -- dispatch
 
+    def hear(self, text: str) -> None:
+        """Record what the customer said. The runner calls this with every customer turn."""
+        self._said.append(text)
+
+    def log_blocked(self, name: str, arguments_json: str, reason: str) -> None:
+        """Record a call that was discarded without running."""
+        try:
+            recorded: object = json.loads(arguments_json) if (arguments_json or "").strip() else {}
+        except json.JSONDecodeError:
+            recorded = arguments_json
+        self.calls.append({"after_turn": self.turn, "name": name,
+                           "arguments": recorded, "result": {"blocked": reason}})
+
     def call(self, name: str, arguments_json: str) -> dict:
         """Run one tool call. Returns a JSON-serializable dict and never raises."""
         recorded: object = arguments_json
@@ -210,7 +274,11 @@ class AccountSession:
             handler = self._handlers.get(name)
             if handler is None:
                 raise _BadArguments("unknown tool")
-            result = handler(_check_object("", raw, _SCHEMAS[name]))
+            missing = ungrounded(name, raw, self._said) if self.grounding else []
+            if missing:     # before argument validation: empty or missing values land here too
+                result = self._refuse_ungrounded(name, missing)
+            else:
+                result = handler(_check_object("", raw, _SCHEMAS[name]))
         except json.JSONDecodeError:
             result = {"error": "arguments are not valid JSON"}
         except _BadArguments as exc:
@@ -220,6 +288,13 @@ class AccountSession:
         self.calls.append({"after_turn": self.turn, "name": name,
                            "arguments": recorded, "result": result})
         return result
+
+    def _refuse_ungrounded(self, name: str, missing: list[str]) -> dict:
+        """Nothing is compared with the account and no attempt is counted."""
+        if name == "verify_identity":
+            return {"result": "not_checked", "reason": "not_said_by_customer",
+                    "missing": missing, "failed_attempts": self.failed_attempts}
+        return {"received": False, "reason": "not_said_by_customer", "missing": missing}
 
     def _code(self, kind: str) -> str:
         n = self._counters.get(kind, 0)
