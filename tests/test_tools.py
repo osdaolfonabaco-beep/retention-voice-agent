@@ -711,7 +711,7 @@ def test_session_grounds_a_pin_said_in_words():
 # ---------------------------------------------------------------- tools answer before the yes
 
 def test_tools_version_and_descriptions_tell_the_model_it_can_check_first():
-    assert tools.TOOLS_VERSION == 2
+    assert tools.TOOLS_VERSION == 3
     descriptions = {t["function"]["name"]: t["function"]["description"] for t in tools.TOOL_SPECS}
     for name in ("apply_offer", "set_payment_plan"):
         assert "customer_said_yes false" in descriptions[name]
@@ -798,3 +798,278 @@ def test_cancel_service_is_unchanged_by_the_new_order():
     assert call(s, "cancel_service", customer_said_yes=False) == {
         "cancelled": False, "reason": "customer_has_not_said_yes"}
     assert call(s, "cancel_service", customer_said_yes=True)["cancelled"] is True
+
+
+# ---------------------------------------------------------------- close names and the proof question
+
+CLOSE = [
+    ("Marcus Oyelaran", "Marcus Oyeleron"), ("Marcus Oyelaran", "Marcus Oyularin"),
+    ("Renee Fontenot", "Rene Fontenot"), ("Simone Abara", "Simone Ibarra"),
+    ("Tomasz Wrobel", "Tomas Wroble"), ("Bettina Krause", "Bettina Kraus"),
+    ("Carmen Villalobos", "Carmen Villa Lobos"),
+]
+NOT_CLOSE = [
+    ("Arthur Pennington", "Julia Pennington"), ("Meredith Vaughn", "Paul Vaughn"),
+    ("Samuel Ortiz", "Diego Ortiz"), ("Eugene Marlowe", "Susan Marlowe"),
+    ("Gordon Pratt", "Jordan Pratt"),
+]
+
+
+@pytest.mark.parametrize("on_file, given", CLOSE)
+def test_names_close_accepts_names_that_sound_alike(on_file, given):
+    assert tools.names_close(given, on_file) is True
+
+
+@pytest.mark.parametrize("on_file, given", NOT_CLOSE)
+def test_names_close_rejects_a_different_first_name(on_file, given):
+    assert tools.names_close(given, on_file) is False
+
+
+@pytest.mark.parametrize("given, on_file", [
+    ("Teresa Galloway", "Teresa Galloway"), ("  teresa   GALLOWAY ", "Teresa Galloway"),
+    ("", "Teresa Galloway"), ("1234", "Teresa Galloway"), ("Teresa", "Teresa Galloway"),
+    ("Galloway Teresa", "Teresa Galloway"),
+])
+def test_names_close_is_false_for_equal_empty_and_unrelated_names(given, on_file):
+    assert tools.names_close(given, on_file) is False
+
+
+def test_names_close_ignores_everything_but_letters():
+    assert tools.names_close("Marcus O'Yelaran", "Marcus Oyelaran") is True      # not equal, ratio 1
+    assert tools.names_close("Marcus Oyeleron!", "Marcus Oyelaran") is True
+
+
+Z_ADDRESS = "88 Larkspur Loop, Boise, ID 83702"
+Z_SAID = "I'm Marcus Oyeleron at 88 Larkspur Loop, pin 4410"
+
+
+def tolerant(grounding=False, tolerance=True, **over):
+    account = make_account(account_holder="Marcus Oyelaran", authorized_users=["Lena Hoffman"],
+                           service_address=Z_ADDRESS, **over)
+    return AccountSession(account, "sc-1", grounding=grounding, name_tolerance=tolerance)
+
+
+def close_verify(s, name="Marcus Oyeleron", **extra):
+    args = dict(full_name=name, service_address=Z_ADDRESS, pin="4410")
+    args.update(extra)
+    return call(s, "verify_identity", **args)
+
+
+ASK = {"result": "more_proof_needed", "ask_for": "zip_code", "failed_attempts": 0}
+
+
+def test_an_exact_name_behaves_as_before_and_ignores_zip_code():
+    for extra in ({}, {"zip_code": "99999"}):
+        s = tolerant()
+        assert close_verify(s, "Marcus Oyelaran", **extra) == {
+            "result": "verified_account_holder", "failed_attempts": 0}
+
+
+def test_a_close_name_without_zip_asks_for_more_proof_and_counts_no_attempt():
+    s = tolerant()
+    assert close_verify(s) == ASK
+    assert close_verify(s) == ASK and close_verify(s) == ASK     # asking never locks
+    assert s.failed_attempts == 0 and s.verified_as is None and not s.locked
+    assert call(s, "get_account") == {"error": "not_verified"}
+
+
+def test_a_close_name_with_the_right_zip_verifies_and_says_it_was_close():
+    s = tolerant()
+    assert close_verify(s) == ASK
+    assert close_verify(s, zip_code="83702") == {
+        "result": "verified_account_holder", "failed_attempts": 0, "name_match": "close"}
+    assert "plan" in call(s, "get_account")
+
+
+@pytest.mark.parametrize("zip_code", ["83702", "83702.", "8 3 7 0 2", "83702-1234",
+                                      " ZIP 83702 ", "837021234"])
+def test_the_zip_is_compared_on_digits_only(zip_code):
+    s = tolerant()
+    close_verify(s)
+    assert close_verify(s, zip_code=zip_code)["result"] == "verified_account_holder"
+
+
+@pytest.mark.parametrize("zip_code", ["83703", "8370", "837020", "83702-12", "83702123", "1883702",
+                                      "8370212345", "boise"])
+def test_a_wrong_or_malformed_zip_is_not_verified_and_counts_an_attempt(zip_code):
+    s = tolerant()
+    close_verify(s)
+    if re.sub(r"\D", "", zip_code):
+        assert close_verify(s, zip_code=zip_code) == {"result": "not_verified", "failed_attempts": 1}
+    else:                                   # no digits: the same as no zip_code
+        assert close_verify(s, zip_code=zip_code) == ASK
+
+
+def test_two_wrong_zips_lock_the_session_even_for_the_right_one():
+    s = tolerant()
+    close_verify(s)
+    assert close_verify(s, zip_code="11111") == {"result": "not_verified", "failed_attempts": 1}
+    assert close_verify(s, zip_code="22222") == {"result": "not_verified", "failed_attempts": 2}
+    assert close_verify(s, zip_code="83702") == {"result": "locked", "failed_attempts": 2}
+    assert s.locked and call(s, "get_account") == {"error": "not_verified"}
+
+
+def test_a_close_name_with_a_wrong_pin_or_address_is_as_before_and_gets_no_proof_question():
+    for args, attempts in (({"pin": "0000"}, 1), ({"service_address": "500 Elm St"}, 1)):
+        s = tolerant()
+        assert close_verify(s, **args) == {"result": "not_verified", "failed_attempts": attempts}
+    s = tolerant()
+    assert call(s, "verify_identity", full_name="Marcus Oyeleron", service_address=Z_ADDRESS) == {
+        "result": "not_verified", "failed_attempts": 0}              # no PIN or amount: not counted
+
+
+def test_a_close_name_works_with_the_last_payment_instead_of_the_pin():
+    s = tolerant()
+    assert call(s, "verify_identity", full_name="Marcus Oyeleron", service_address=Z_ADDRESS,
+                last_payment_amount=60) == ASK
+    assert call(s, "verify_identity", full_name="Marcus Oyeleron", service_address=Z_ADDRESS,
+                last_payment_amount=60, zip_code="83702")["name_match"] == "close"
+
+
+def test_a_close_authorized_user_name_verifies_as_authorized_user():
+    s = tolerant()
+    assert close_verify(s, "Lena Hofman") == ASK
+    assert close_verify(s, "Lena Hofman", zip_code="83702") == {
+        "result": "verified_authorized_user", "failed_attempts": 0, "name_match": "close"}
+
+
+def test_a_name_that_is_neither_exact_nor_close_is_as_before():
+    s = tolerant()
+    assert close_verify(s, "Julia Oyelaran", zip_code="83702") == {
+        "result": "not_verified", "failed_attempts": 1}
+
+
+def test_tolerance_off_is_exactly_the_old_behaviour():
+    s = tolerant(tolerance=False)
+    assert close_verify(s) == {"result": "not_verified", "failed_attempts": 1}
+    assert close_verify(s, zip_code="83702") == {"result": "not_verified", "failed_attempts": 2}
+    assert close_verify(s, "Marcus Oyelaran") == {"result": "locked", "failed_attempts": 2}
+    assert tools.AccountSession(make_account(), "sc-1").name_tolerance is False
+    s = tolerant(tolerance=False)
+    assert close_verify(s, "Marcus Oyelaran") == {
+        "result": "verified_account_holder", "failed_attempts": 0}
+
+
+def test_a_close_name_cannot_verify_when_no_zip_is_on_file():
+    s = AccountSession(make_account(account_holder="Marcus Oyelaran",
+                                    service_address="88 Larkspur Loop, Boise"),
+                       "sc-1", grounding=False, name_tolerance=True)
+    result = call(s, "verify_identity", full_name="Marcus Oyeleron",
+                  service_address="88 Larkspur Loop", pin="4410", zip_code="83702")
+    assert result == {"result": "not_verified", "failed_attempts": 1}
+
+
+def test_the_zip_on_file_is_the_last_five_digit_group_of_the_address():
+    s = AccountSession(make_account(service_address="12345 Main St, Boise, ID 83702"), "sc-1")
+    assert s._zip_on_file() == "83702"
+    s = AccountSession(make_account(service_address="1234 Main St, Boise, ID 837021"), "sc-1")
+    assert s._zip_on_file() is None
+
+
+def test_no_result_reveals_the_name_or_the_zip_on_file():
+    for step in range(3):
+        s = tolerant()
+        out = [close_verify(s), close_verify(s, zip_code="11111"),
+               close_verify(s, zip_code="83702")][:step + 1]
+        text = json.dumps(out)
+        assert "83702" not in text and "Oyelaran" not in text and "Larkspur" not in text
+
+
+def test_a_zip_sent_before_any_proof_question_counts_as_absent():
+    s = tolerant()
+    assert close_verify(s, zip_code="83702") == ASK          # nothing counted, not verified
+    assert s.failed_attempts == 0 and s.verified_as is None
+    assert close_verify(s, zip_code="83702")["name_match"] == "close"     # now it was asked
+
+
+def test_a_zip_with_an_exact_name_does_not_open_the_proof_question():
+    s = tolerant()
+    close_verify(s, "Marcus Oyelaran", zip_code="83702")     # verified, ignored
+    s = tolerant()
+    call(s, "verify_identity", full_name="Marcus Oyelaran", service_address="500 Elm St",
+         pin="4410", zip_code="83702")                       # wrong address: not_verified as before
+    assert close_verify(s, zip_code="83702") == {**ASK, "failed_attempts": 1}   # never asked yet
+
+
+def test_the_customer_must_say_the_zip_after_the_proof_question():
+    s = tolerant(grounding=True)
+    s.hear(Z_SAID + ", zip 83702")                           # said too early
+    assert close_verify(s) == ASK
+    assert close_verify(s, zip_code="83702") == ASK          # grounded only in earlier text: absent
+    assert s.failed_attempts == 0
+    s.hear("Sure, it is 83702.")
+    assert close_verify(s, zip_code="83702") == {
+        "result": "verified_account_holder", "failed_attempts": 0, "name_match": "close"}
+
+
+def test_a_zip_the_customer_never_said_counts_as_absent_not_as_a_failed_attempt():
+    s = tolerant(grounding=True)
+    s.hear(Z_SAID)
+    assert close_verify(s) == ASK
+    s.hear("Sorry, what do you need?")
+    assert close_verify(s, zip_code="83702") == ASK
+    assert s.failed_attempts == 0
+
+
+def test_every_new_proof_question_moves_the_position():
+    s = tolerant(grounding=True)
+    s.hear(Z_SAID)
+    assert close_verify(s) == ASK
+    assert close_verify(s, zip_code="83702") == ASK          # asks again: the position moves up
+    s.hear("it is 83702")
+    assert close_verify(s, zip_code="83702")["result"] == "verified_account_holder"
+
+
+@pytest.mark.parametrize("said", ["8 3 7 0 2", "eight three seven oh two", "It's 83702, thanks",
+                                  "83702 dash 1234"])
+def test_a_zip_said_in_digits_or_words_is_grounded(said):
+    s = tolerant(grounding=True)
+    s.hear(Z_SAID)
+    close_verify(s)
+    s.hear(said)
+    assert close_verify(s, zip_code="83702")["result"] == "verified_account_holder"
+
+
+def test_zip_code_is_not_a_refusal_in_the_grounding_check():
+    args = {"full_name": "Marcus Oyeleron", "service_address": Z_ADDRESS, "pin": "4410",
+            "zip_code": "83702"}
+    assert tools.ungrounded("verify_identity", args, [Z_SAID]) == []
+
+
+def test_the_proof_question_is_the_same_with_grounding_off():
+    s = tolerant(grounding=False)
+    assert close_verify(s, zip_code="83702") == ASK
+    assert close_verify(s, zip_code="83702")["name_match"] == "close"
+
+
+def test_verify_identity_spec_has_zip_code_and_says_to_send_it_after_the_question():
+    spec = next(t["function"] for t in TOOL_SPECS if t["function"]["name"] == "verify_identity")
+    assert spec["parameters"]["properties"]["zip_code"]["type"] == "string"
+    assert "zip_code" not in spec["parameters"]["required"]
+    assert "only after the tool asked for more proof" in spec["description"]
+
+
+def pay_close(s, name="Marcus Oyeleron", address=Z_ADDRESS):
+    return call(s, "take_payment", account_holder_full_name=name, service_address=address, amount=25)
+
+
+def test_take_payment_with_tolerance_accepts_a_close_holder_name_with_no_proof_question():
+    s = tolerant()
+    assert pay_close(s)["received"] is True
+    assert s.verified_as is None and s.failed_attempts == 0
+
+
+def test_take_payment_tolerance_is_off_by_default_and_needs_the_address_and_the_holder():
+    assert pay_close(tolerant(tolerance=False)) == {"received": False, "reason": "account_not_identified"}
+    s = tolerant()
+    assert pay_close(s, address="500 Elm St")["received"] is False
+    assert pay_close(s, name="Julia Oyelaran")["received"] is False
+    assert pay_close(s, name="Lena Hofman")["received"] is False     # authorized users never pay
+    assert pay_close(s, name="Marcus Oyelaran")["received"] is True
+
+
+def test_take_payment_grounding_still_applies_with_tolerance():
+    s = tolerant(grounding=True)
+    assert pay_close(s)["reason"] == "not_said_by_customer"
+    s.hear("This is Marcus Oyeleron at 88 Larkspur Loop and I want to pay 25 dollars")
+    assert pay_close(s)["received"] is True

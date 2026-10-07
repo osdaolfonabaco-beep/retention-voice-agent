@@ -177,7 +177,7 @@ def play_voice_scenario(scenario: dict, agent_client, customer_client, audio: _A
                         ) -> tuple[list[dict], AccountSession, str, list[dict]]:
     """Play one contact by voice. Returns (turns, session, stop_reason, voice_turns rows)."""
     sid = scenario["id"]
-    session = AccountSession(scenario["account"], sid, grounding=True)
+    session = AccountSession(scenario["account"], sid, grounding=True, name_tolerance=True)
     agent_messages = [{"role": "user", "content": START_MESSAGE}]   # not recorded
     customer_messages = [{"role": "system", "content": customer_system}]
     counting = _Counting(agent_client)
@@ -337,7 +337,7 @@ def run_mode(args, client, models: tuple[str, str], root: Path, sleep, now, say=
 
     out_dir = root / "data" / "agent_runs" / args.run
     meta = {"run": args.run, "agent_model": agent_model, "customer_model": customer_model,
-            "agent_prompt": args.agent_prompt, "guards": True,
+            "agent_prompt": args.agent_prompt, "guards": True, "name_tolerance": True,
             "agent_prompt_sha256": _sha256(agent_template),
             "customer_prompt_sha256": _sha256(customer_template),
             "policy_sha256": _sha256(policy), "scenarios_sha256": scenarios_sha,
@@ -437,6 +437,20 @@ def interruption_stats(voice_rows: list[dict], tool_rows: list[dict]) -> dict:
             "with_numbers_in_remainder": with_numbers, "numbers_repeated_later": repeated}
 
 
+def more_proof_stats(tool_rows: list[dict]) -> dict:
+    """Contacts where verify_identity returned more_proof_needed, and how many of those
+    ended verified (a verified result in the contact; verification does not wear off)."""
+    asked = ended_verified = 0
+    for row in tool_rows:
+        results = [c["result"].get("result") for c in row["calls"]
+                   if c["name"] == "verify_identity" and isinstance(c["result"], dict)]
+        if "more_proof_needed" in results:
+            asked += 1
+            ended_verified += any(r in ("verified_account_holder", "verified_authorized_user")
+                                  for r in results)
+    return {"asked": asked, "ended_verified": ended_verified}
+
+
 def summarize_voice(run: str, voice_rows: list[dict], tool_rows: list[dict]) -> dict:
     customer = [r for r in voice_rows if r["speaker"] == "customer"]
     agent_rows = [r for r in voice_rows if r["speaker"] == "agent"]
@@ -453,7 +467,8 @@ def summarize_voice(run: str, voice_rows: list[dict], tool_rows: list[dict]) -> 
         "word_error": {"mean_rate": round(sum(rates) / len(rates), 4) if rates else None,
                        "no_error_share": round(sum(x == 0 for x in rates) / len(rates), 4)
                        if rates else None},
-        "interruptions": interruption_stats(voice_rows, tool_rows)}
+        "interruptions": interruption_stats(voice_rows, tool_rows),
+        "more_proof": more_proof_stats(tool_rows)}
 
 
 def print_voice_report(s: dict, say=print) -> None:
@@ -474,6 +489,8 @@ def print_voice_report(s: dict, say=print) -> None:
         f"{i['next_turn_no_account_change']} of {i['with_next_agent_turn']}")
     say(f"  every digit number of the unspoken part said again later: "
         f"{i['numbers_repeated_later']} of {i['with_numbers_in_remainder']}")
+    m = s["more_proof"]
+    say(f"asked for more proof: {m['asked']} contacts, {m['ended_verified']} ended verified")
 
 
 def report_mode(run: str, root: Path, say=print) -> int:

@@ -428,7 +428,7 @@ def test_run_json_has_models_and_hashes(tmp_path):
                          "agent_prompt_sha256", "customer_prompt_sha256", "policy_sha256",
                          "scenarios_sha256", "agent_reasoning_effort", "guards", "tools_version",
                          "created"}
-    assert meta["tools_version"] == TOOLS_VERSION == 2
+    assert meta["tools_version"] == TOOLS_VERSION == 3
     assert meta["guards"] is True and meta["agent_prompt"] == "prompts/agent_system.md"
     assert meta["agent_reasoning_effort"] == "none"
     assert meta["run"] == "r1" and meta["agent_model"] == "agent-m"

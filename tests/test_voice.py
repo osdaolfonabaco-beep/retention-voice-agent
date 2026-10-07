@@ -236,7 +236,8 @@ def test_run_json_records_the_voice_settings(tmp_path):
     assert meta["stt_model"] == "gpt-4o-mini-transcribe" and meta["tts_model"] == "gpt-4o-mini-tts"
     assert meta["agent_voice"] == "coral" and meta["customer_voice"] == "ash"
     assert meta["interruptions"] is True and meta["guards"] is True
-    assert meta["tools_version"] == 2 and meta["agent_prompt"] == "prompts/agent_system.md"
+    assert meta["tools_version"] == 3 and meta["agent_prompt"] == "prompts/agent_system.md"
+    assert meta["name_tolerance"] is True
     assert meta["agent_reasoning_effort"] == "none" and meta["created"] == NOW
     assert {"agent_model", "customer_model", "agent_prompt_sha256", "customer_prompt_sha256",
             "policy_sha256", "scenarios_sha256"} <= set(meta)
@@ -591,3 +592,91 @@ def test_report_command_prints_and_writes_voice_summary(tmp_path):
 def test_report_needs_the_files(tmp_path):
     with pytest.raises(SystemExit):
         voice.main(["--report", "nope"], root=tmp_path)
+
+
+# ---------------------------------------------------------------- close names
+
+HEARD_CALLER = "I'm Teresa Galoway at 412 Juniper Ct, pin 4410."
+CLOSE_VERIFY = {**VERIFY, "full_name": "Teresa Galoway"}
+
+
+def close_name_client():
+    """The speech-to-text hears "Galoway"; the tool asks for the ZIP; the customer gives it."""
+    return VoiceClient(
+        [say("Hello, this is Marisa."), use("verify_identity", CLOSE_VERIFY, call_id="c1"),
+         say("Thanks. And what is the ZIP code on the account?"),
+         use("verify_identity", {**CLOSE_VERIFY, "zip_code": "86001"}, call_id="c2"),
+         say("Thanks, Teresa.")],
+        [CALLER, "86001", "[END]"], heard={CALLER: HEARD_CALLER})
+
+
+def test_the_voice_session_has_name_tolerance_and_run_json_records_it(tmp_path):
+    run = VRun(tmp_path)
+    run.go(close_name_client(), "--no-interrupt")
+    [row] = run.rows("tool_calls.jsonl")
+    assert [c["result"] for c in row["calls"]] == [
+        {"result": "more_proof_needed", "ask_for": "zip_code", "failed_attempts": 0},
+        {"result": "verified_account_holder", "failed_attempts": 0, "name_match": "close"}]
+    meta = json.loads((run.out_dir / "run.json").read_text(encoding="utf-8"))
+    assert meta["name_tolerance"] is True
+
+
+def test_a_run_json_without_name_tolerance_cannot_be_resumed(tmp_path):
+    run = VRun(tmp_path, ids=("ag-01", "ag-02"))
+    run.go(simple_client(), "--limit", "1")
+    path = run.out_dir / "run.json"
+    meta = json.loads(path.read_text(encoding="utf-8"))
+    del meta["name_tolerance"]
+    path.write_text(json.dumps(meta), encoding="utf-8")
+    with pytest.raises(SystemExit):
+        run.go(simple_client())
+
+
+def test_the_trace_check_reads_the_close_name_run_as_clean(tmp_path):
+    run = VRun(tmp_path)
+    run.go(close_name_client(), "--no-interrupt")
+    out = []
+    assert trace.main(["--run", "r1"], root=run.root, say=out.append) == 0
+    assert out[0] == "ag-01  none"
+
+
+def proof_rows(*per_contact):
+    """tool_calls rows: one list of verify_identity results per contact."""
+    return [{"id": f"c{i}", "calls": [
+        {"after_turn": 2, "name": "verify_identity", "arguments": {}, "result": r}
+        for r in results]} for i, results in enumerate(per_contact)]
+
+
+ASKED = {"result": "more_proof_needed", "ask_for": "zip_code", "failed_attempts": 0}
+HOLDER = {"result": "verified_account_holder", "failed_attempts": 0, "name_match": "close"}
+NOT_VERIFIED = {"result": "not_verified", "failed_attempts": 1}
+
+
+def test_more_proof_counts_contacts_asked_and_those_that_ended_verified():
+    rows = proof_rows([ASKED, HOLDER],                                  # asked, verified
+                      [ASKED, ASKED, NOT_VERIFIED, NOT_VERIFIED],       # asked, never verified
+                      [ASKED],                                          # asked, left
+                      [{"result": "verified_account_holder", "failed_attempts": 0}],   # never asked
+                      [NOT_VERIFIED], [])
+    assert voice.more_proof_stats(rows) == {"asked": 3, "ended_verified": 1}
+    assert voice.more_proof_stats([]) == {"asked": 0, "ended_verified": 0}
+
+
+def test_more_proof_ignores_discarded_calls_and_other_tools():
+    rows = [{"id": "c0", "calls": [
+        {"after_turn": 2, "name": "verify_identity", "arguments": {},
+         "result": {"blocked": "asked_a_question"}},
+        {"after_turn": 2, "name": "get_account", "arguments": {}, "result": ASKED}]}]
+    assert voice.more_proof_stats(rows) == {"asked": 0, "ended_verified": 0}
+
+
+def test_the_summary_and_the_report_line_carry_the_more_proof_counts(tmp_path):
+    rows, calls = report_fixture()
+    assert voice.summarize_voice("r1", rows, calls)["more_proof"] == {"asked": 0, "ended_verified": 0}
+    run = VRun(tmp_path)
+    run.go(close_name_client(), "--no-interrupt")
+    out = []
+    assert voice.main(["--report", "r1"], root=run.root, say=out.append) == 0
+    assert "asked for more proof: 1 contacts, 1 ended verified" in out
+    summary = json.loads((run.out_dir / "voice_summary.json").read_text(encoding="utf-8"))
+    assert summary["more_proof"] == {"asked": 1, "ended_verified": 1}

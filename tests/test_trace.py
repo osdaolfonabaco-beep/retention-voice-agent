@@ -412,6 +412,29 @@ def test_effects_come_from_processed_successful_calls():
         "payment:60", "payment:60.5", "payment:60.25", "escalate:ES-4:tier2"]
 
 
+CLOSE_OK = {"result": "verified_account_holder", "failed_attempts": 0, "name_match": "close"}
+MORE_PROOF = {"result": "more_proof_needed", "ask_for": "zip_code", "failed_attempts": 0}
+
+
+def test_a_close_name_verification_reads_as_verified_and_the_proof_question_does_not():
+    asked, done = cl(2, "verify_identity", VERIFY, MORE_PROOF), cl(
+        4, "verify_identity", {**VERIFY, "zip_code": "86001"}, CLOSE_OK)
+    assert trace.effects([asked]) == []
+    assert trace.effects([asked, done]) == ["verified"]
+    assert outcome([asked, done], must=["verified"]) == []
+    assert outcome([asked], must=["verified"]) == ["missing verified"]
+
+
+def test_a_verify_call_with_a_zip_code_is_not_an_ungrounded_call(tmp_path):
+    turns = [agent("Hello."), customer(GOOD), agent("What is your ZIP code?"),
+             customer("86001"), agent("Thanks, you are verified.")]
+    calls = [cl(2, "verify_identity", VERIFY, MORE_PROOF),
+             cl(4, "verify_identity", {**VERIFY, "zip_code": "86001"}, CLOSE_OK)]
+    write_run(tmp_path, {"c1": contact(turns, calls)})
+    code, out = run_trace(tmp_path, "--run", "r1")
+    assert code == 0 and out[0] == "c1  none"
+
+
 def test_a_downgrade_without_details_takes_the_plan_from_the_arguments():
     call = cl(2, "apply_offer", {"offer": "downgrade", "target_plan": "Basic",
                                  "customer_said_yes": True}, {"applied": True})

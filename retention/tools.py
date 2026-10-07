@@ -10,18 +10,21 @@ from __future__ import annotations
 
 import calendar
 import copy
+import difflib
 import hashlib
 import json
 import math
 import re
 from datetime import date, timedelta
 
-TOOLS_VERSION = 2       # recorded in run.json; bump when a tool's behaviour changes
+TOOLS_VERSION = 3       # recorded in run.json; bump when a tool's behaviour changes
 PLAN_PRICES = {"Basic": 45, "Plus": 60, "Giga": 80}
 OFFERS = ("discount_25_3mo", "downgrade", "service_credit", "extra_days")
 # stage -> (days allowed until the first payment, months allowed until the last)
 PLAN_LIMITS = {"Early": (10, 3), "Mid": (5, 2), "Late": (2, 1)}
 MAX_FAILED_ATTEMPTS = 2
+CLOSE_WORD_RATIO = 0.70     # name_tolerance: each word, when both names have as many words
+CLOSE_JOINED_RATIO = 0.85   # name_tolerance: the names with spaces removed
 ESCALATION_REASONS = tuple(f"ES-{n}" for n in range(1, 8))
 END_STATUSES = ("resolved", "escalated", "no_change")
 _DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
@@ -42,11 +45,15 @@ _YES = {"type": "boolean", "description": "true only if the customer clearly sai
 TOOL_SPECS = [
     _tool("verify_identity",
           "Check who the person is. Needs the full name, the service address and one more item: "
-          "the account PIN or the amount of the last payment. Returns only the result.",
+          "the account PIN or the amount of the last payment. Returns only the result. If the "
+          "result is more_proof_needed, ask the customer for the ZIP code and call again with "
+          "zip_code; send zip_code only after the tool asked for more proof.",
           {"full_name": {"type": "string"},
            "service_address": {"type": "string"},
            "last_payment_amount": {"type": "number", "description": "amount of the last payment"},
-           "pin": {"type": "string", "description": "account PIN"}},
+           "pin": {"type": "string", "description": "account PIN"},
+           "zip_code": {"type": "string", "description": "ZIP code the customer said after the "
+                                                          "tool asked for more proof"}},
           ["full_name", "service_address"]),
     _tool("get_account",
           "Read the account: plan, price, stage, balance, next bill, eligibility, history. "
@@ -150,6 +157,32 @@ def _alnum(text: str) -> str:
     return re.sub(r"[^a-z0-9]", "", text.lower())
 
 
+def _letter_words(text: str) -> list[str]:
+    return [w for w in (re.sub(r"[^a-z]", "", part) for part in text.lower().split()) if w]
+
+
+def _ratio(on_file: str, given: str) -> float:
+    return difflib.SequenceMatcher(None, on_file, given).ratio()
+
+
+def names_close(given: str, on_file: str) -> bool:
+    """A name that sounds like the one on file but is not equal to it (lowercase letters only).
+
+    Close when both have the same number of words and every pair of words in order has a
+    similarity ratio of at least CLOSE_WORD_RATIO, or when the two names with spaces removed
+    have a ratio of at least CLOSE_JOINED_RATIO.
+    """
+    if _norm_name(given) == _norm_name(on_file):
+        return False
+    said, filed = _letter_words(given), _letter_words(on_file)
+    if not said or not filed:
+        return False
+    if len(said) == len(filed) and all(
+            _ratio(f, g) >= CLOSE_WORD_RATIO for f, g in zip(filed, said)):
+        return True
+    return _ratio("".join(filed), "".join(said)) >= CLOSE_JOINED_RATIO
+
+
 _NUMBER = re.compile(r"\d[\d,]*(?:\.\d+)?")
 _WORD = re.compile(r"[a-z]+|\d+")
 _DIGIT_WORDS = {"zero": 0, "oh": 0, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
@@ -233,6 +266,13 @@ def _spoken_digits(text: str) -> str:
     return "".join(str(_DIGIT_WORDS.get(w, w)) for w in _WORD.findall(text.lower()))
 
 
+def _digit_stream(text: str) -> str:
+    """The digits of `text` in order, digit words ("four", "oh") written as digits and every
+    other word dropped: "3 3 6 0 6" and "three three six zero six" both give "33606"."""
+    return "".join(str(_DIGIT_WORDS.get(w, w)) for w in _WORD.findall(text.lower())
+                   if w.isdigit() or w in _DIGIT_WORDS)
+
+
 def ungrounded(tool: str, args, said: list[str]) -> list[str]:
     """Parameters of a verify_identity or take_payment call that the customer did not say.
 
@@ -295,11 +335,14 @@ def _money(value: float) -> float:
 class AccountSession:
     """State of one contact over one account (tools never change the account itself)."""
 
-    def __init__(self, account: dict, scenario_id: str, grounding: bool = True):
+    def __init__(self, account: dict, scenario_id: str, grounding: bool = True,
+                 name_tolerance: bool = False):
         self.account = account
         self.scenario_id = scenario_id
         self.grounding = grounding         # refuse identity and payment values the customer never said
+        self.name_tolerance = name_tolerance   # accept a close name, with a ZIP proof question
         self._said: list[str] = []         # customer turns so far, see `hear`
+        self._proof_from: int | None = None    # len(_said) when more_proof_needed was last returned
         self.calls: list[dict] = []
         self.turn = 0                       # set by the runner: turns recorded so far
         self.ended = False
@@ -392,6 +435,32 @@ class AccountSession:
             return "verified_authorized_user"
         return None
 
+    def _close_role(self, given: str) -> str | None:
+        """Role of the person on file whose name `given` is close to (only with name_tolerance)."""
+        if not self.name_tolerance:
+            return None
+        if names_close(given, self.account["account_holder"]):
+            return "verified_account_holder"
+        if any(names_close(given, u) for u in self.account.get("authorized_users", [])):
+            return "verified_authorized_user"
+        return None
+
+    def _zip_on_file(self) -> str | None:
+        groups = re.findall(r"(?<!\d)\d{5}(?!\d)", self.account["service_address"])
+        return groups[-1] if groups else None
+
+    def _zip_answer(self, given) -> str | None:
+        """The digits of `given` if it counts as the answer to the proof question: more_proof_needed
+        was returned before, and (with grounding) the customer said those digits in one turn
+        after that. Otherwise None, as if no zip_code was sent."""
+        digits = re.sub(r"\D", "", given) if isinstance(given, str) else ""
+        if not digits or self._proof_from is None:
+            return None
+        if self.grounding and not any(digits in _digit_stream(t)
+                                      for t in self._said[self._proof_from:]):
+            return None
+        return digits
+
     def _verify_identity(self, a: dict) -> dict:
         if self.locked:
             return {"result": "locked", "failed_attempts": self.failed_attempts}
@@ -403,9 +472,24 @@ class AccountSession:
                     or ("last_payment_amount" in a and abs(
                         a["last_payment_amount"] - float(on_file["last_payment_amount"])) < _CENT))
         role = self._name_role(a["full_name"])
+        close = role is None
+        if close:
+            role = self._close_role(a["full_name"])
+        zip_on_file = self._zip_on_file()
         if role and self._address_matches(a["service_address"]) and third_ok:
-            self.verified_as = role
-            return {"result": role, "failed_attempts": self.failed_attempts}
+            if not close:
+                self.verified_as = role
+                return {"result": role, "failed_attempts": self.failed_attempts}
+            if zip_on_file:     # a close name needs the ZIP; without one on file it cannot verify
+                answer = self._zip_answer(a.get("zip_code"))
+                if answer is None:
+                    self._proof_from = len(self._said)
+                    return {"result": "more_proof_needed", "ask_for": "zip_code",
+                            "failed_attempts": self.failed_attempts}
+                if answer == zip_on_file or (len(answer) == 9 and answer.startswith(zip_on_file)):
+                    self.verified_as = role
+                    return {"result": role, "failed_attempts": self.failed_attempts,
+                            "name_match": "close"}
         if has_third:
             self.failed_attempts += 1
         return {"result": "not_verified", "failed_attempts": self.failed_attempts}
@@ -537,7 +621,9 @@ class AccountSession:
     def _take_payment(self, a: dict) -> dict:
         if a["amount"] <= 0:
             raise _BadArguments("invalid argument: amount")
-        holder = _norm_name(a["account_holder_full_name"]) == _norm_name(self.account["account_holder"])
+        name, filed = a["account_holder_full_name"], self.account["account_holder"]
+        holder = _norm_name(name) == _norm_name(filed) or (
+            self.name_tolerance and names_close(name, filed))
         if not (holder and self._address_matches(a["service_address"])):
             return {"received": False, "reason": "account_not_identified"}
         return {"received": True, "confirmation_number": f"PM-{self._code('payment')}"}
