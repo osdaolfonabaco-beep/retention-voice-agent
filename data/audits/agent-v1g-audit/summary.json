@@ -1,0 +1,15 @@
+{
+  "run": "agent-v1g-audit",
+  "audited": 24,
+  "clean": 13,
+  "clean_pct": 54.2,
+  "failed_by_category": {
+    "false_resolution": 1,
+    "missed_escalation": 1,
+    "unfulfillable_promise": 0,
+    "aggravating_tone": 1,
+    "premature_closure": 9,
+    "privacy_breach": 0
+  },
+  "findings": 15
+}

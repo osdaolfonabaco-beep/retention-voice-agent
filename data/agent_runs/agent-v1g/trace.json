@@ -1,0 +1,133 @@
+{
+  "run": "agent-v1g",
+  "contacts": [
+    {
+      "id": "ag-01",
+      "violations": []
+    },
+    {
+      "id": "ag-02",
+      "violations": []
+    },
+    {
+      "id": "ag-03",
+      "violations": []
+    },
+    {
+      "id": "ag-04",
+      "violations": []
+    },
+    {
+      "id": "ag-05",
+      "violations": []
+    },
+    {
+      "id": "ag-06",
+      "violations": []
+    },
+    {
+      "id": "ag-07",
+      "violations": []
+    },
+    {
+      "id": "ag-08",
+      "violations": []
+    },
+    {
+      "id": "ag-09",
+      "violations": []
+    },
+    {
+      "id": "ag-10",
+      "violations": []
+    },
+    {
+      "id": "ag-11",
+      "violations": []
+    },
+    {
+      "id": "ag-12",
+      "violations": []
+    },
+    {
+      "id": "ag-13",
+      "violations": []
+    },
+    {
+      "id": "ag-14",
+      "violations": []
+    },
+    {
+      "id": "ag-15",
+      "violations": []
+    },
+    {
+      "id": "ag-16",
+      "violations": []
+    },
+    {
+      "id": "ag-17",
+      "violations": []
+    },
+    {
+      "id": "ag-18",
+      "violations": []
+    },
+    {
+      "id": "ag-19",
+      "violations": []
+    },
+    {
+      "id": "ag-20",
+      "violations": []
+    },
+    {
+      "id": "ag-21",
+      "violations": []
+    },
+    {
+      "id": "ag-22",
+      "violations": []
+    },
+    {
+      "id": "ag-23",
+      "violations": []
+    },
+    {
+      "id": "ag-24",
+      "violations": []
+    }
+  ],
+  "totals": {
+    "contacts": 24,
+    "ungrounded_call": 0,
+    "ended_on_question": 0,
+    "no_violation": 24,
+    "blocked": {
+      "asked_a_question": 24,
+      "not_said_by_customer": 3
+    }
+  },
+  "audit": {
+    "run": "agent-v1g-audit",
+    "clean_both": {
+      "ids": [
+        "ag-01",
+        "ag-03",
+        "ag-04",
+        "ag-05",
+        "ag-07",
+        "ag-08",
+        "ag-09",
+        "ag-10",
+        "ag-11",
+        "ag-14",
+        "ag-15",
+        "ag-20",
+        "ag-24"
+      ],
+      "count": 13,
+      "pct": 54.2
+    }
+  }
+}
