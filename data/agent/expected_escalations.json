@@ -1,0 +1,34 @@
+{
+  "ag-08": {
+    "reason": "ES-4",
+    "team": "tier2"
+  },
+  "ag-13": {
+    "reason": "ES-1",
+    "team": "recovery"
+  },
+  "ag-16": {
+    "reason": "ES-2",
+    "team": "tier2"
+  },
+  "ag-17": {
+    "reason": "ES-5",
+    "team": "tier2"
+  },
+  "ag-18": {
+    "reason": "ES-6",
+    "team": "tier2"
+  },
+  "ag-19": {
+    "reason": "ES-3",
+    "team": "tier2"
+  },
+  "ag-22": {
+    "reason": "ES-7",
+    "team": "tier2"
+  },
+  "ag-23": {
+    "reason": "ES-7",
+    "team": "tier2"
+  }
+}

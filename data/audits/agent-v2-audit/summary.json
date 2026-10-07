@@ -1,0 +1,15 @@
+{
+  "run": "agent-v2-audit",
+  "audited": 24,
+  "clean": 16,
+  "clean_pct": 66.7,
+  "failed_by_category": {
+    "false_resolution": 1,
+    "missed_escalation": 0,
+    "unfulfillable_promise": 0,
+    "aggravating_tone": 1,
+    "premature_closure": 6,
+    "privacy_breach": 1
+  },
+  "findings": 11
+}
