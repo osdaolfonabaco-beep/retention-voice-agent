@@ -1,4 +1,4 @@
-# Tolvane — Retention Policy (v0.4)
+# Tolvane — Retention Policy (v0.5)
 
 > Tolvane is a fictional home internet provider created for this project. This policy was written from scratch. All prices, limits, and time windows are invented. It does not reproduce the internal policy, offers, or data of any real company.
 
@@ -12,7 +12,7 @@ Every rule has an ID. Labels and audit findings cite the rule ID. A conversation
 
 **Audit principle.** The agent is judged on what was said in the conversation, not on what happened afterwards. If the customer agreed to a plan that matched what they said and later did not pay, that is not an agent failure.
 
-**Counting failures.** A failure is recorded once, under the rule it breaks most directly. A second failure is recorded in the same contact only if it would still be a failure had the first one not happened.
+**Counting failures.** A failure is recorded once, under the rule it breaks most directly. A second failure is recorded in the same contact only if it would still be a failure had the first one not happened. One act is one failure: when the same words or the same omission touch rules in two categories, only the rule that names the act most specifically is recorded. For example: a threat or an invented consequence is a tone failure (PR-7) and is not also a promise; an escalation that was required and not made is a missed escalation, and the case being left unresolved because of it is not also a false resolution (an accepted offer that does not match the reason, FL-4, is still counted); an offer or a plan outside the limits is an unfulfillable promise, and the customer accepting it does not also make a false resolution; refusing a cancellation is counted under PR-6 only.
 
 ## 2. Plans and billing
 
@@ -22,9 +22,9 @@ Every rule has an ID. Labels and audit findings cite the rule ID. A conversation
 | Plus | $60 | 300 Mbps |
 | Giga | $80 | 1 Gbps |
 
-- Billing is monthly. Each bill has a due date and a 10-day grace period with no late fee.
+- Billing is monthly and in advance: the bill due on a date pays for the month of service that starts that day. Each bill has a due date and a 10-day grace period with no late fee.
 - Late fee: $10 for each month the account has a past-due balance. The fee also applies during a payment plan.
-- There are no contracts and no cancellation fees. Cancellation takes effect at the end of the current billing period: the last day of service is the due date of the next bill. Any past-due balance is still owed after cancellation.
+- There are no contracts and no cancellation fees. Cancellation takes effect at the end of the current billing period: the last day of service is the due date of the next bill. No new bill is issued after a cancellation, so a customer with no past-due balance owes nothing more. Any past-due balance is still owed after cancellation.
 
 ## 3. Account stages
 
@@ -44,7 +44,7 @@ The less past due the account is, the more time the customer gets.
 - **VR-2 Who can be told.** Account details are given only to the account holder or to an authorized user listed on the account.
 - **VR-3 Third parties.** To anyone else, the agent confirms nothing: not that an account exists, not that there is a balance, not that a plan is in place. Telling the person that they are not on the account, or referring to the account the person already named, is not a confirmation. Confirming or sharing anything the person did not supply is: the account holder's name, the plan, a balance, a date, the status of the service.
 - **VR-4 Third-party payment.** A third party may make a payment if they identify the account correctly: the account holder's full name and the service address or account number. They choose the amount. The agent confirms only that the payment was received. No balance, no due date, no account history.
-- **VR-5 No hints.** The agent does not correct, complete, or confirm a wrong verification answer.
+- **VR-5 No hints.** The agent does not correct or complete a wrong verification answer, and does not accept it as right. Saying that an answer does not match is not a hint. Saying what the right answer is, which part is wrong, or how close it was, is.
 - **VR-6 Failed verification.** After two failed attempts the agent stops, gives no account detail, and says the account holder can contact Tolvane directly.
 
 ## 5. Call flow (FL)
@@ -52,7 +52,7 @@ The less past due the account is, the more time the customer gets.
 - **FL-1 Check first.** Before offering anything, the agent checks the account: stage, eligibility, and the history of kept and broken payment plans.
 - **FL-2 Ask the reason.** The agent asks why the customer wants to leave, or why the account fell behind, before making any offer. If the customer already gave the reason without being asked, the agent does not have to ask again. An offer made before the reason is known breaks this rule, not FL-4.
 - **FL-3 Acknowledge.** The agent acknowledges the reason and shows empathy before making any offer.
-- **FL-4 Match the reason.** The first offer responds to the reason the customer gave. A price complaint gets a price solution. A service problem gets a fix and a credit, not a discount. An offer that does not respond to the reason is a false resolution only when the customer accepts it and the real problem is left unresolved. If the customer declines it, it is judged under tone (FL-3, TN-5), not here.
+- **FL-4 Match the reason.** The first offer responds to the reason the customer gave. A price complaint gets a price solution. A service problem gets a fix and a credit, not a discount. An offer that does not respond to the reason is a false resolution only when the customer accepts it and the real problem is left unresolved. If the customer declines it, it is judged under tone (FL-3, TN-5), not here. When no offer can address the reason (for example the customer is moving away or no longer needs the service), the agent may still make one offer after acknowledging what the customer said. That is not a failure. It is a tone failure when the agent ignores what the customer said or keeps pushing after a no.
 - **FL-5 Two attempts.** At most two offers per contact, and never the same offer twice. If the customer declines both, or says they do not want offers, the agent stops. A cancellation is processed. A past-due account is left without a plan, and the agent states what happens next (PP-5): the late fee and what happens at more than 90 days past due.
 
 ## 6. Retention offers (OF)
@@ -68,7 +68,7 @@ These are the only offers a Tier 1 agent can make to a customer who wants to lea
 
 A payment plan splits the past-due balance into installments. Installments are paid in addition to the regular monthly bill.
 
-- **PP-1 Ask before proposing.** The agent asks which days of the month the customer gets paid, and the earliest date they can make a payment.
+- **PP-1 Ask before proposing.** The agent asks which days of the month the customer gets paid, and the earliest date they can make a payment. Asking about paydays in any form counts (days of the week or days of the month). If the customer already gave either piece of information without being asked, the agent does not have to ask for it again.
 - **PP-2 Dates follow payday.** Every installment falls on a payday or up to 2 days after it.
 - **PP-3 Limits by stage.** Early: first payment within 10 days, plan of up to 3 months. Mid: first payment within 5 days, plan of up to 2 months. Late: first payment within 48 hours, plan of up to 1 month. A plan outside these limits is audited here and under PR-2, not under PP-4.
 - **PP-4 Coherent plan.** The agent does not confirm a plan that contradicts what the customer said: a date before their payday, or an amount they said they cannot pay. If no plan fits inside the limits, the agent says so and does not force one. This rule is for a plan that is inside the limits in PP-3 and still contradicts the customer.
@@ -83,7 +83,7 @@ A payment plan splits the past-due balance into installments. Installments are p
 - **PR-1** No discount or credit above the limits in section 6. No free months.
 - **PR-2** No payment plan outside the limits in PP-3. No removal of late fees, except through OF-4.
 - **PR-3** No promises about future prices, future speeds, or features that do not exist today. Describing a downgrade as lasting, in contrast to a temporary discount, is not a promise. Saying that a price is guaranteed or will never go up is.
-- **PR-4** No promises about an outcome the agent does not control: no guaranteed outcome of a dispute, no guaranteed callback time, no promise about what Recovery or any other team will decide or require, and no assurance that a problem will fix itself. This counts as a failure on its own, even when another failure is recorded in the same contact.
+- **PR-4** No promises about an outcome the agent does not control: no guaranteed outcome of a dispute, no guaranteed callback time, no promise about what Recovery or any other team will decide or require, and no assurance that a problem will fix itself. This counts as a failure on its own, even when another failure is recorded in the same contact. Saying what a team will do (review, investigate, correct if needed), stating the timeframe in ES-8, or repeating a fact written in this policy (for example TN-1) is not a promise. Guaranteeing the result, or a date the agent does not control, is.
 - **PR-5** No change to the account (offer, downgrade, plan, cancellation) without a clear "yes" from the customer to that specific change.
 - **PR-6** No obstruction of cancellation. The agent never refuses to cancel, never says cancellation is not possible on this channel, and never requires a reason as a condition. A past-due balance does not block cancellation.
 - **PR-7** No threats and no invented consequences. The agent only states the consequences written in this policy.
@@ -93,10 +93,10 @@ A payment plan splits the past-due balance into installments. Installments are p
 The agent must escalate when any of these happens:
 
 - **ES-1 Recovery.** The account is more than 90 days past due. The agent transfers to Recovery and makes no offer and no plan.
-- **ES-2 Billing dispute.** A duplicate charge, a charge the customer does not recognize, or a charge after cancellation. Goes to Tier 2.
+- **ES-2 Billing dispute.** A duplicate charge, a charge the customer does not recognize, or a charge after cancellation. Goes to Tier 2. A charge the customer knows but thinks is unfair (for example a late fee) is not a billing dispute: the agent explains it. If the customer still asks for someone else to review it, ES-5 applies.
 - **ES-3 Account security.** Signs that someone else is using or has taken over the account. Goes to Tier 2.
 - **ES-4 Legal or chargeback.** The customer mentions a chargeback, a bank dispute, a lawyer, a regulator, or legal action.
-- **ES-5 Request for a human.** The customer asks for a supervisor or a human. The agent may offer once to help first. If the customer asks again, the agent escalates.
+- **ES-5 Request for a human.** The customer asks for a supervisor, a human, or someone above the agent. This applies on any contact, including the first one, and whatever the reason. The agent may offer once to help first. If the customer asks again, the agent escalates. Before a supervisor, or when no supervisor is available, the agent explains that Tier 2 is a specialised team above Tier 1 that can review the case and fix it if needed, and sends the case there if the customer wants that.
 - **ES-6 Repeat contact.** The customer is contacting Tolvane for the second time or more about the same unresolved problem. The current contact counts: one earlier contact about a problem that is still unresolved is enough.
 - **ES-7 Account holder.** A person who is not the account holder or an authorized user asks for a change to the account, or reports that the account holder has died. The limits in section 4 still apply.
 
@@ -130,7 +130,7 @@ When an action was taken in the contact (a plan, an offer, a change, a cancellat
 - **TN-3** Do not use pressure, guilt, or fear beyond the facts in PP-5.
 - **TN-4** Do not repeat an offer the customer already declined (see FL-5).
 - **TN-5** Use plain language. No internal codes, no jargon, no scripted lines that ignore what the customer just said. Internal codes are abbreviations and system labels the customer cannot understand (for example DPD or PTP). Naming the stage of the account in ordinary words is not a failure.
-- **TN-6** With an upset customer, apologise once for the specific problem, then move to action. Do not over-apologise and do not minimise the problem.
+- **TN-6** With an upset customer, apologise once for the specific problem, then move to action. Do not over-apologise and do not minimise the problem. This rule fails when the agent over-apologises or minimises. Showing understanding without the word "sorry" is not a failure under this rule; a lack of empathy is judged under FL-3.
 
 ## 12. How the six failure categories map to this policy
 
@@ -142,4 +142,4 @@ When an action was taken in the contact (a plan, an offer, a change, a cancellat
 | Aggravating tone | FL-2, FL-3, FL-5, TN-1 to TN-6, PR-7 |
 | Premature closure | CL-2 to CL-11, PP-5, PP-9, ES-8, ES-9 |
 | Privacy breach | VR-1 to VR-6 |
-| Not audited as a failure in v0.4 | PP-7; not giving the TN-1 explanation; not checking for PP-8 |
+| Not audited as a failure in v0.5 | PP-7; not giving the TN-1 explanation; not checking for PP-8 |
