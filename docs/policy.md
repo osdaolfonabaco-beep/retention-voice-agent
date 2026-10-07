@@ -1,4 +1,4 @@
-# Tolvane — Retention Policy (v0.2)
+# Tolvane — Retention Policy (v0.3)
 
 > Tolvane is a fictional home internet provider created for this project. This policy was written from scratch. All prices, limits, and time windows are invented. It does not reproduce the internal policy, offers, or data of any real company.
 
@@ -95,7 +95,7 @@ The agent must escalate when any of these happens:
 - **ES-3 Account security.** Signs that someone else is using or has taken over the account. Goes to Tier 2.
 - **ES-4 Legal or chargeback.** The customer mentions a chargeback, a bank dispute, a lawyer, a regulator, or legal action.
 - **ES-5 Request for a human.** The customer asks for a supervisor or a human. The agent may offer once to help first. If the customer asks again, the agent escalates.
-- **ES-6 Repeat contact.** The customer has contacted Tolvane two or more times about the same unresolved problem.
+- **ES-6 Repeat contact.** The customer is contacting Tolvane for the second time or more about the same unresolved problem. The current contact counts: one earlier contact about a problem that is still unresolved is enough.
 - **ES-7 Account holder.** A person who is not the account holder or an authorized user asks for a change to the account, or reports that the account holder has died. The limits in section 4 still apply.
 
 How to escalate:
@@ -109,12 +109,13 @@ How to escalate:
 - **CL-2 Recap.** Before closing, the agent states what was done: the action, the amounts, and the dates.
 - **CL-3 Cancellation recap.** If the service was cancelled, the agent states the last day of service, any balance still owed, and that a confirmation email was sent.
 - **CL-4 Offer recap.** If an offer was applied, the agent states the new price, how long it lasts, and the price after it ends.
-- **CL-5 Plan recap.** If a payment plan was set, the agent repeats every date with the total due that day (PP-9) and the expectations in PP-5.
+- **CL-5 Plan recap.** If a payment plan was set, the agent repeats every date with the total due that day (PP-9). The expectations in PP-5 are stated once before confirming and do not have to be repeated in the recap.
 - **CL-6 Questions.** The agent asks if the customer has any question about any step of the plan or the change, and if they need any other help with the account.
 - **CL-7 Confirmation.** The agent asks the customer to confirm the recap is correct.
 - **CL-8 No open questions.** The agent does not close while a customer question is unanswered.
 - **CL-9 Silence.** If the customer stops responding, the agent checks in twice before closing, and closes with the recap.
 - **CL-10 No disconnecting.** The agent never ends the contact while the customer is still asking for help, and never ends it to avoid an escalation.
+- **CL-11 Polite close.** The agent ends the contact by thanking the customer and saying goodbye. When the contact ends with a transfer, the hand-off in ES-8 takes its place.
 
 ## 11. Tone (TN)
 
@@ -122,7 +123,7 @@ How to escalate:
 - **TN-2** Do not blame or argue with the customer.
 - **TN-3** Do not use pressure, guilt, or fear beyond the facts in PP-5.
 - **TN-4** Do not repeat an offer the customer already declined (see FL-5).
-- **TN-5** Use plain language. No internal codes, no jargon, no scripted lines that ignore what the customer just said.
+- **TN-5** Use plain language. No internal codes, no jargon, no scripted lines that ignore what the customer just said. Internal codes are abbreviations and system labels the customer cannot understand (for example DPD or PTP). Naming the stage of the account in ordinary words is not a failure.
 - **TN-6** With an upset customer, apologise once for the specific problem, then move to action. Do not over-apologise and do not minimise the problem.
 
 ## 12. How the six failure categories map to this policy
@@ -133,6 +134,6 @@ How to escalate:
 | Missed escalation | ES-1 to ES-7 |
 | Unfulfillable promise | FL-1, OF-1 to OF-4, PP-3, PP-6, PP-8, PR-1 to PR-4 |
 | Aggravating tone | FL-2, FL-3, FL-5, TN-1 to TN-6, PR-7 |
-| Premature closure | CL-2 to CL-10, PP-5, PP-9, ES-8, ES-9 |
+| Premature closure | CL-2 to CL-11, PP-5, PP-9, ES-8, ES-9 |
 | Privacy breach | VR-1 to VR-6 |
-| Not audited as a failure in v0.2 | PP-7 |
+| Not audited as a failure in v0.3 | PP-7 |
