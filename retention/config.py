@@ -6,6 +6,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 REQUIRED = ("LLM_BASE_URL", "LLM_API_KEY")
+AUDITOR_REQUIRED = ("AUDITOR_BASE_URL", "AUDITOR_API_KEY", "AUDITOR_MODEL")
 
 
 class ConfigError(Exception):
@@ -39,3 +40,15 @@ def load_settings(path: Path | None = None) -> tuple[str, str]:
     if missing:
         raise ConfigError(f"missing in {path.name}: {', '.join(missing)}")
     return values["LLM_BASE_URL"], values["LLM_API_KEY"]
+
+
+def load_auditor_settings(path: Path | None = None) -> tuple[str, str, str]:
+    """Return (base_url, api_key, model). Errors name the variable, never its value."""
+    path = Path(path) if path else ROOT / ".env"
+    if not path.is_file():
+        raise ConfigError(f"{path.name} not found; copy .env.example and fill it in")
+    values = parse_env(path.read_text(encoding="utf-8"))
+    missing = [name for name in AUDITOR_REQUIRED if not values.get(name)]
+    if missing:
+        raise ConfigError(f"missing in {path.name}: {', '.join(missing)}")
+    return values["AUDITOR_BASE_URL"], values["AUDITOR_API_KEY"], values["AUDITOR_MODEL"]

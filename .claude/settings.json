@@ -3,7 +3,9 @@
     "defaultMode": "plan",
     "deny": [
       "Read(./.env)",
-      "Read(./data/pilot/scenarios.sealed)"
+      "Read(./data/pilot/scenarios.sealed)",
+      "Read(./data/batch2/scenarios.sealed)",
+      "Read(./data/batch3/scenarios.sealed)"
     ]
   }
 }
