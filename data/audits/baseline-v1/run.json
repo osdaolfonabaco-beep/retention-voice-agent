@@ -1,0 +1,7 @@
+{
+  "run": "baseline-v1",
+  "model": "gpt-6-luna",
+  "prompt_sha256": "74fa04c70bfa244c3e698d4314a76d7f3cab0abd827a629a348ce81733f6ce16",
+  "policy_sha256": "b14549e92fc1cab7a450c6ecc642f8d9ec149501fdbe3b8519d7d1ff18600150",
+  "created": "2026-10-07T06:49:39+00:00"
+}
