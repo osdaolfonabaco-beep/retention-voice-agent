@@ -1,0 +1,117 @@
+{"ts": "2026-10-07T04:14:31+00:00", "id": "b3-001", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:14:35+00:00", "id": "b3-002", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:14:41+00:00", "id": "b3-003", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:14:46+00:00", "id": "b3-004", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:14:50+00:00", "id": "b3-005", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "invalid", "error": "turns 7 and 8 have the same speaker"}
+{"ts": "2026-10-07T04:14:56+00:00", "id": "b3-005", "model": "gemini-3.5-flash-lite", "attempt": 2, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:15:39+00:00", "id": "b3-006", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "error", "error": "InternalServerError 503"}
+{"ts": "2026-10-07T04:16:55+00:00", "id": "b3-006", "model": "gemini-3.5-flash-lite", "attempt": 2, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:17:17+00:00", "id": "b3-007", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:17:20+00:00", "id": "b3-008", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:17:24+00:00", "id": "b3-009", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:17:29+00:00", "id": "b3-010", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:17:34+00:00", "id": "b3-011", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:17:39+00:00", "id": "b3-012", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:17:42+00:00", "id": "b3-013", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "error", "error": "InternalServerError 503"}
+{"ts": "2026-10-07T04:18:16+00:00", "id": "b3-013", "model": "gemini-3.5-flash-lite", "attempt": 2, "status": "invalid", "error": "turns 13 and 14 have the same speaker"}
+{"ts": "2026-10-07T04:18:19+00:00", "id": "b3-014", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:18:25+00:00", "id": "b3-015", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:18:30+00:00", "id": "b3-016", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:18:34+00:00", "id": "b3-017", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:18:40+00:00", "id": "b3-018", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:18:42+00:00", "id": "b3-019", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "error", "error": "InternalServerError 503"}
+{"ts": "2026-10-07T04:19:15+00:00", "id": "b3-019", "model": "gemini-3.5-flash-lite", "attempt": 2, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:19:19+00:00", "id": "b3-020", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:19:25+00:00", "id": "b3-021", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:19:29+00:00", "id": "b3-022", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:19:35+00:00", "id": "b3-023", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:19:41+00:00", "id": "b3-024", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:19:45+00:00", "id": "b3-025", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:19:49+00:00", "id": "b3-026", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:19:55+00:00", "id": "b3-027", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:19:59+00:00", "id": "b3-028", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "invalid", "error": "malformed JSON"}
+{"ts": "2026-10-07T04:20:04+00:00", "id": "b3-028", "model": "gemini-3.5-flash-lite", "attempt": 2, "status": "invalid", "error": "turns 9 and 10 have the same speaker"}
+{"ts": "2026-10-07T04:20:09+00:00", "id": "b3-029", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:20:15+00:00", "id": "b3-030", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "invalid", "error": "turns 5 and 6 have the same speaker"}
+{"ts": "2026-10-07T04:20:20+00:00", "id": "b3-030", "model": "gemini-3.5-flash-lite", "attempt": 2, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:20:25+00:00", "id": "b3-031", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:20:30+00:00", "id": "b3-032", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:20:34+00:00", "id": "b3-033", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:20:40+00:00", "id": "b3-034", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:20:45+00:00", "id": "b3-035", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:20:51+00:00", "id": "b3-036", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:20:56+00:00", "id": "b3-037", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:20:59+00:00", "id": "b3-038", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:21:04+00:00", "id": "b3-039", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:21:09+00:00", "id": "b3-040", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "invalid", "error": "turns 11 and 12 have the same speaker"}
+{"ts": "2026-10-07T04:21:15+00:00", "id": "b3-040", "model": "gemini-3.5-flash-lite", "attempt": 2, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:21:20+00:00", "id": "b3-041", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:21:25+00:00", "id": "b3-042", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:21:30+00:00", "id": "b3-043", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "invalid", "error": "turns 9 and 10 have the same speaker"}
+{"ts": "2026-10-07T04:21:35+00:00", "id": "b3-043", "model": "gemini-3.5-flash-lite", "attempt": 2, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:21:40+00:00", "id": "b3-044", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:21:45+00:00", "id": "b3-045", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:21:49+00:00", "id": "b3-046", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:21:55+00:00", "id": "b3-047", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:22:00+00:00", "id": "b3-048", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "invalid", "error": "turns 13 and 14 have the same speaker"}
+{"ts": "2026-10-07T04:22:06+00:00", "id": "b3-048", "model": "gemini-3.5-flash-lite", "attempt": 2, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:22:10+00:00", "id": "b3-049", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:22:15+00:00", "id": "b3-050", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:22:20+00:00", "id": "b3-051", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:22:25+00:00", "id": "b3-052", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:22:29+00:00", "id": "b3-053", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:22:34+00:00", "id": "b3-054", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:22:41+00:00", "id": "b3-055", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "invalid", "error": "turns 11 and 12 have the same speaker"}
+{"ts": "2026-10-07T04:22:45+00:00", "id": "b3-055", "model": "gemini-3.5-flash-lite", "attempt": 2, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:22:49+00:00", "id": "b3-056", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:22:55+00:00", "id": "b3-057", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:23:01+00:00", "id": "b3-058", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "invalid", "error": "turns 15 and 16 have the same speaker"}
+{"ts": "2026-10-07T04:23:06+00:00", "id": "b3-058", "model": "gemini-3.5-flash-lite", "attempt": 2, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:23:10+00:00", "id": "b3-059", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:23:15+00:00", "id": "b3-060", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:23:20+00:00", "id": "b3-061", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:23:25+00:00", "id": "b3-062", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:23:30+00:00", "id": "b3-063", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:23:34+00:00", "id": "b3-064", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:23:41+00:00", "id": "b3-065", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:23:45+00:00", "id": "b3-066", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:23:50+00:00", "id": "b3-067", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:23:56+00:00", "id": "b3-068", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:24:00+00:00", "id": "b3-069", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:24:05+00:00", "id": "b3-070", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:24:11+00:00", "id": "b3-071", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:24:14+00:00", "id": "b3-072", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:24:20+00:00", "id": "b3-073", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:24:26+00:00", "id": "b3-074", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:24:29+00:00", "id": "b3-075", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:24:36+00:00", "id": "b3-076", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:24:40+00:00", "id": "b3-077", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:24:46+00:00", "id": "b3-078", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:24:50+00:00", "id": "b3-079", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:24:55+00:00", "id": "b3-080", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:41:29+00:00", "id": "b3-007", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:41:33+00:00", "id": "b3-008", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:41:38+00:00", "id": "b3-013", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "invalid", "error": "malformed JSON"}
+{"ts": "2026-10-07T04:41:43+00:00", "id": "b3-013", "model": "gemini-3.5-flash-lite", "attempt": 2, "status": "invalid", "error": "turns 13 and 14 have the same speaker"}
+{"ts": "2026-10-07T04:41:48+00:00", "id": "b3-014", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:41:52+00:00", "id": "b3-022", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:41:56+00:00", "id": "b3-028", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:42:02+00:00", "id": "b3-031", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "invalid", "error": "turns 10 and 11 have the same speaker"}
+{"ts": "2026-10-07T04:42:08+00:00", "id": "b3-031", "model": "gemini-3.5-flash-lite", "attempt": 2, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:42:11+00:00", "id": "b3-032", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:42:16+00:00", "id": "b3-038", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "invalid", "error": "turns 9 and 10 have the same speaker"}
+{"ts": "2026-10-07T04:42:21+00:00", "id": "b3-038", "model": "gemini-3.5-flash-lite", "attempt": 2, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:42:27+00:00", "id": "b3-042", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:42:32+00:00", "id": "b3-044", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:42:37+00:00", "id": "b3-047", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:42:42+00:00", "id": "b3-056", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:42:48+00:00", "id": "b3-057", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:42:52+00:00", "id": "b3-058", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:42:57+00:00", "id": "b3-072", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:43:03+00:00", "id": "b3-074", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:54:19+00:00", "id": "b3-008", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:54:23+00:00", "id": "b3-013", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:54:27+00:00", "id": "b3-022", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:54:33+00:00", "id": "b3-031", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "ok", "error": null}
+{"ts": "2026-10-07T04:54:38+00:00", "id": "b3-058", "model": "gemini-3.5-flash-lite", "attempt": 1, "status": "invalid", "error": "turns 21 and 22 have the same speaker"}
+{"ts": "2026-10-07T04:54:43+00:00", "id": "b3-058", "model": "gemini-3.5-flash-lite", "attempt": 2, "status": "ok", "error": null}
