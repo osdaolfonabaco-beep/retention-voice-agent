@@ -9,6 +9,7 @@ Portfolio project. An auditor reads a retention conversation and flags failures 
 - Never read, print, or log `.env` or any `data/*/scenarios.sealed` file. Never print API keys or decoded scenario cards.
 - Do not run git commands. The owner commits.
 - Do not call the model API unless the task says so. Tests run offline with a fake client.
+- Only `retention/evaluate.py` reads labels (`labels_key.jsonl`, `second_reader.jsonl`). The auditor (`retention/audit.py`) never sees them.
 - Keep answers short: what changed, how to run it, what to verify.
 
 ## Stack
@@ -24,5 +25,7 @@ Portfolio project. An auditor reads a retention conversation and flags failures 
 
 - `docs/policy.md`: the retention policy. Its rule IDs (VR, FL, OF, PP, PR, ES, CL, TN) are the source of truth.
 - `retention/`: Python package with the project code.
+- `prompts/audit_conversation.md`: the auditor's system prompt template (one placeholder, `{policy}`). Written by the owner; do not edit.
 - `tests/`: unit tests.
 - `data/`: synthetic conversations and labels.
+- `data/audits/`: audit runs, one folder per run (`audits.jsonl`, `log.jsonl`, `run.json`, and the evaluator's metrics and disagreements).

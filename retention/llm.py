@@ -57,6 +57,21 @@ class ChatClient:
             return ""
         return resp.choices[0].message.content or ""
 
+    def complete_with_usage(self, model: str, messages: list[dict]) -> tuple[str, dict]:
+        """Like `complete`, also returning {"input_tokens", "output_tokens"} (None if unreported)."""
+        try:
+            resp = self._client.chat.completions.create(model=model, messages=messages)
+        except Exception as exc:
+            raise _map_error(exc) from None
+        usage = getattr(resp, "usage", None)
+        counts = {
+            "input_tokens": getattr(usage, "prompt_tokens", None),
+            "output_tokens": getattr(usage, "completion_tokens", None),
+        }
+        if not resp.choices:
+            return "", counts
+        return resp.choices[0].message.content or "", counts
+
     def list_models(self) -> list[str]:
         try:
             page = self._client.models.list()
