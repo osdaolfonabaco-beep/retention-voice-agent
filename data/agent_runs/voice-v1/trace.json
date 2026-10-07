@@ -1,0 +1,278 @@
+{
+  "run": "voice-v1",
+  "contacts": [
+    {
+      "id": "ag-01",
+      "violations": []
+    },
+    {
+      "id": "ag-02",
+      "violations": []
+    },
+    {
+      "id": "ag-03",
+      "violations": []
+    },
+    {
+      "id": "ag-04",
+      "violations": []
+    },
+    {
+      "id": "ag-05",
+      "violations": []
+    },
+    {
+      "id": "ag-06",
+      "violations": []
+    },
+    {
+      "id": "ag-07",
+      "violations": []
+    },
+    {
+      "id": "ag-08",
+      "violations": []
+    },
+    {
+      "id": "ag-09",
+      "violations": []
+    },
+    {
+      "id": "ag-10",
+      "violations": []
+    },
+    {
+      "id": "ag-11",
+      "violations": []
+    },
+    {
+      "id": "ag-12",
+      "violations": []
+    },
+    {
+      "id": "ag-13",
+      "violations": []
+    },
+    {
+      "id": "ag-14",
+      "violations": []
+    },
+    {
+      "id": "ag-15",
+      "violations": []
+    },
+    {
+      "id": "ag-16",
+      "violations": []
+    },
+    {
+      "id": "ag-17",
+      "violations": []
+    },
+    {
+      "id": "ag-18",
+      "violations": []
+    },
+    {
+      "id": "ag-19",
+      "violations": []
+    },
+    {
+      "id": "ag-20",
+      "violations": []
+    },
+    {
+      "id": "ag-21",
+      "violations": []
+    },
+    {
+      "id": "ag-22",
+      "violations": []
+    },
+    {
+      "id": "ag-23",
+      "violations": []
+    },
+    {
+      "id": "ag-24",
+      "violations": []
+    }
+  ],
+  "totals": {
+    "contacts": 24,
+    "ungrounded_call": 0,
+    "ended_on_question": 0,
+    "no_violation": 24,
+    "blocked": {
+      "asked_a_question": 20,
+      "not_said_by_customer": 2
+    }
+  },
+  "escalations": {
+    "required": 8,
+    "correct": 8,
+    "missed_or_wrong": [],
+    "unneeded": [],
+    "not_in_run": []
+  },
+  "outcomes": {
+    "total": 24,
+    "correct": 17,
+    "contacts": [
+      {
+        "id": "ag-01",
+        "failed": []
+      },
+      {
+        "id": "ag-02",
+        "failed": [
+          "missing offer:downgrade:Plus"
+        ]
+      },
+      {
+        "id": "ag-03",
+        "failed": []
+      },
+      {
+        "id": "ag-04",
+        "failed": []
+      },
+      {
+        "id": "ag-05",
+        "failed": []
+      },
+      {
+        "id": "ag-06",
+        "failed": []
+      },
+      {
+        "id": "ag-07",
+        "failed": [
+          "missing cancel"
+        ]
+      },
+      {
+        "id": "ag-08",
+        "failed": []
+      },
+      {
+        "id": "ag-09",
+        "failed": [
+          "missing plan"
+        ]
+      },
+      {
+        "id": "ag-10",
+        "failed": [
+          "missing plan"
+        ]
+      },
+      {
+        "id": "ag-11",
+        "failed": []
+      },
+      {
+        "id": "ag-12",
+        "failed": [
+          "missing plan"
+        ]
+      },
+      {
+        "id": "ag-13",
+        "failed": []
+      },
+      {
+        "id": "ag-14",
+        "failed": [
+          "plan ends after 2026-10-25"
+        ]
+      },
+      {
+        "id": "ag-15",
+        "failed": [
+          "missing plan"
+        ]
+      },
+      {
+        "id": "ag-16",
+        "failed": []
+      },
+      {
+        "id": "ag-17",
+        "failed": []
+      },
+      {
+        "id": "ag-18",
+        "failed": []
+      },
+      {
+        "id": "ag-19",
+        "failed": []
+      },
+      {
+        "id": "ag-20",
+        "failed": []
+      },
+      {
+        "id": "ag-21",
+        "failed": []
+      },
+      {
+        "id": "ag-22",
+        "failed": []
+      },
+      {
+        "id": "ag-23",
+        "failed": []
+      },
+      {
+        "id": "ag-24",
+        "failed": []
+      }
+    ],
+    "no_expectation": [],
+    "not_in_run": []
+  },
+  "audit": {
+    "run": "voice-v1-audit",
+    "clean_both": {
+      "ids": [
+        "ag-01",
+        "ag-02",
+        "ag-03",
+        "ag-04",
+        "ag-05",
+        "ag-10",
+        "ag-11",
+        "ag-12",
+        "ag-13",
+        "ag-18",
+        "ag-19",
+        "ag-20",
+        "ag-22",
+        "ag-23",
+        "ag-24"
+      ],
+      "count": 15,
+      "pct": 62.5
+    },
+    "clean_all": {
+      "ids": [
+        "ag-01",
+        "ag-03",
+        "ag-04",
+        "ag-05",
+        "ag-11",
+        "ag-13",
+        "ag-18",
+        "ag-19",
+        "ag-20",
+        "ag-22",
+        "ag-23",
+        "ag-24"
+      ],
+      "count": 12,
+      "pct": 50.0
+    }
+  }
+}

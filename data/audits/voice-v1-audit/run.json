@@ -1,0 +1,7 @@
+{
+  "run": "voice-v1-audit",
+  "model": "gpt-6-luna",
+  "prompt_sha256": "b460fce8b4e33429f4d010d4bb67b0a2af3b8dae9fc1413f99a272838de60832",
+  "policy_sha256": "32c3f896b79bdba094be2a2d3f1d02678822449d3f1c1f24b2e2c9685c2be24c",
+  "created": "2026-10-07T21:38:23+00:00"
+}

@@ -1,0 +1,19 @@
+{
+  "run": "voice-v1",
+  "agent_model": "gpt-6-luna",
+  "customer_model": "gpt-5.6-luna",
+  "agent_prompt": "prompts/agent_system_v3.md",
+  "guards": true,
+  "agent_prompt_sha256": "5cd6131137606c8c98739702b31399389bf3be5b14b65883a8e8334824677dbd",
+  "customer_prompt_sha256": "a452b512e2c972bb6469c12f1ca6645b13cac274a57345a72e049116e022b090",
+  "policy_sha256": "32c3f896b79bdba094be2a2d3f1d02678822449d3f1c1f24b2e2c9685c2be24c",
+  "scenarios_sha256": "71c38741a1efa2e9155339d45497aa9a91ea63affc81546f2377d238b13ed7ca",
+  "agent_reasoning_effort": "none",
+  "tools_version": 2,
+  "stt_model": "gpt-4o-mini-transcribe",
+  "tts_model": "gpt-4o-mini-tts",
+  "agent_voice": "coral",
+  "customer_voice": "ash",
+  "interruptions": true,
+  "created": "2026-10-07T21:12:11+00:00"
+}
