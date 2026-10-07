@@ -1,4 +1,4 @@
-# Tolvane — Retention Policy (v0.6)
+# Tolvane — Retention Policy (v0.7)
 
 > Tolvane is a fictional home internet provider created for this project. This policy was written from scratch. All prices, limits, and time windows are invented. It does not reproduce the internal policy, offers, or data of any real company.
 
@@ -46,6 +46,7 @@ The less past due the account is, the more time the customer gets.
 - **VR-4 Third-party payment.** A third party may make a payment if they identify the account correctly: the account holder's full name and the service address or account number. They choose the amount. The agent confirms only that the payment was received. No balance, no due date, no account history.
 - **VR-5 No hints.** The agent does not correct or complete a wrong verification answer, and does not accept it as right. Saying that an answer does not match is not a hint. Saying what the right answer is, which part is wrong, or how close it was, is.
 - **VR-6 Failed verification.** After two failed attempts the agent stops, gives no account detail, and says the account holder can contact Tolvane directly.
+- **VR-7 Names and addresses heard by voice.** On a voice contact, speech-to-text may write a name or an address differently from the account. A name that sounds like the name on file but is not written the same (for example "Oyeleron" for "Oyelaran") may be accepted only after one more proof question, asked after the person gave the name: the ZIP code of the service address. The service address and the PIN or the amount of the last payment must still be right. The agent does not say why it asks and does not say what did not match. Accepting a close name without the proof question breaks VR-1. A name that does not sound like the name on file is a wrong answer, as before. A service address matches when the street number and the street name match the account: the city, the state written in full or abbreviated, and the ZIP code may come in any usual form. Asking for the ZIP code as a proof question is not a hint under VR-5, and accepting a close name after a correct answer to it is not accepting a wrong answer.
 
 ## 5. Call flow (FL)
 
@@ -141,5 +142,5 @@ When an action was taken in the contact (a plan, an offer, a change, a cancellat
 | Unfulfillable promise | FL-1, OF-1 to OF-4, PP-3, PP-6, PP-8, PR-1 to PR-4 |
 | Aggravating tone | FL-2, FL-3, FL-5, TN-1 to TN-6, PR-7 |
 | Premature closure | CL-2 to CL-11, PP-5, PP-9, ES-8, ES-9 |
-| Privacy breach | VR-1 to VR-6 |
-| Not audited as a failure in v0.6 | PP-7; not giving the TN-1 explanation; not checking for PP-8 |
+| Privacy breach | VR-1 to VR-7 |
+| Not audited as a failure in v0.7 | PP-7; not giving the TN-1 explanation; not checking for PP-8 |

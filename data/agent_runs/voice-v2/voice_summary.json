@@ -1,0 +1,51 @@
+{
+  "run": "voice-v2",
+  "turns": 307,
+  "customer_turns": 142,
+  "agent_turns": 165,
+  "timings_ms": {
+    "stt_ms": {
+      "n": 142,
+      "median": 572.9,
+      "p95": 1398.8,
+      "max": 1854.1
+    },
+    "model_ms": {
+      "n": 165,
+      "median": 1768.0,
+      "p95": 4181.2,
+      "max": 7015.0
+    },
+    "tts_first_byte_ms": {
+      "n": 165,
+      "median": 732.7,
+      "p95": 1638.6,
+      "max": 7272.5
+    },
+    "response_ms": {
+      "n": 165,
+      "median": 3284.1,
+      "p95": 6328.4,
+      "max": 10087.5
+    }
+  },
+  "audio_seconds": {
+    "agent": 1887.3,
+    "customer": 1051.7
+  },
+  "word_error": {
+    "mean_rate": 0.0207,
+    "no_error_share": 0.7324
+  },
+  "interruptions": {
+    "simulated": 18,
+    "with_next_agent_turn": 18,
+    "next_turn_no_account_change": 18,
+    "with_numbers_in_remainder": 9,
+    "numbers_repeated_later": 8
+  },
+  "more_proof": {
+    "asked": 5,
+    "ended_verified": 5
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "run": "tune-v3-p07",
+  "model": "gpt-6-luna",
+  "prompt_sha256": "b460fce8b4e33429f4d010d4bb67b0a2af3b8dae9fc1413f99a272838de60832",
+  "policy_sha256": "2197f9b5a907a51cc795d719fa9ef50aeb5725d2ade86b947b6800a5f9758c03",
+  "created": "2026-10-07T23:00:26+00:00"
+}
